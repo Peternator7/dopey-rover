@@ -1,0 +1,48 @@
+
+top_level_expression :=
+    boolean_expression
+
+
+boolean_expression :=
+    comparison_expression '&&' boolean_expression
+    comparison_expression '||' boolean_expression
+    comparison_expression
+
+comparison_expression :=
+    arithmatic_expression '<' arithmatic_expression
+    arithmatic_expression '<=' arithmatic_expression
+    arithmatic_expression '>' arithmatic_expression
+    arithmatic_expression '>=' arithmatic_expression
+    arithmatic_expression '!=' arithmatic_expression
+    arithmatic_expression '==' arithmatic_expression
+
+arithmatic_expression :=
+    arithmatic_term '+' arithmatic_expression
+    arithmatic_term '-' arithmatic_expression
+
+arithmatic_term :=
+    factor '*' arithmatic_term
+    factor '/' arithmatic_term
+    factor
+
+arithmatic_factor :=
+    call-expr
+    literal
+    new-object-expr
+    array-expr
+    '(' top_level_expression ')'
+
+call-expr :=
+    property-lookup (top_level_expression)*
+
+property-lookup :=
+    ident '.' property-lookup
+
+new-object-expr :=
+    'new' '{'
+        (prototype-list 'with')?
+        object-properties
+    '}'
+
+object-properties :=
+    ident ':' top_level_expression

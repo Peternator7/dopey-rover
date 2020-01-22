@@ -1,3 +1,10 @@
+use dopey_rover::parsing::lexer;
+use dopey_rover::parsing::parser;
+
 fn main() {
-    println!("Hello, world!");
+    let program = r#"new { x: true, y: true - false} + "hello""#;
+
+    if let Ok((_, toks)) = lexer::tokenize(program) {
+        println!("{:?}", parser::parse_arithmatic_expression(&*toks));
+    }
 }

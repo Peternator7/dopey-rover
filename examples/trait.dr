@@ -1,0 +1,26 @@
+
+interface Mappable {
+    map fn target;
+    lift target;
+}
+
+OptionMappable = new Mappable {
+    lift target = { Some with value: target }
+    map fn target =
+        match {
+            target is None -> target
+            target is Some -> lift (fn target.Value)
+            _ -> @next.map fn target
+        }
+}
+
+None = new {};
+Some = new {};
+
+function SafeDivide a b = Monad.bind a (value => if b == 0 { None } else { { Some with } });
+
+function SafeDivide a b = {
+    @set(OptionMappable, Some)
+    context = @get(Mappable, Some)
+    Monad.bind a (value)
+}

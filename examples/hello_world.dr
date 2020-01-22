@@ -1,0 +1,16 @@
+
+
+function main args =
+    name = List.head args
+    text = format "Hello %s" name
+    Console.write text
+
+function main = List.head >> format "Hello %s" >> Console.write
+
+function main = Func.compose [List.head ; format "Hello %s" ; Console.write ]
+
+function main args =
+    args
+    |> List.head
+    |> format "Hello %s"
+    |> Console.write

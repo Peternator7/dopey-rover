@@ -31,5 +31,5 @@ pub enum Expression {
     AlgebraicExpression(AlgebraicOperator, Box<Expression>, Box<Expression>),
     ComparisonExpression(ComparisonOperator, Box<Expression>, Box<Expression>),
     BooleanExpression(BooleanOperator, Box<Expression>, Box<Expression>),
-    Debug(Vec<Expression>)
+    Debug(Vec<Expression>),
 }

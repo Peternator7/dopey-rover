@@ -17,6 +17,9 @@ OptionMappable = new Mappable {
 None = new {};
 Some = new {};
 
+True = new {};
+False = new {};
+
 function SafeDivide a b = Monad.bind a (value => if b == 0 { None } else { { Some with } });
 
 function SafeDivide a b = {

@@ -4,11 +4,13 @@ use nom::branch::alt;
 use nom::combinator::{map, opt, value};
 use nom::error::ErrorKind;
 use nom::multi::{fold_many0, fold_many1, many0, separated_list};
-use nom::sequence::tuple;
+use nom::sequence::{pair, tuple};
 use nom::Err;
 use nom::IResult;
 
-use crate::parsing::parser::expr::{Expression, AlgebraicOperator, BooleanOperator, ComparisonOperator};
+use crate::parsing::parser::expr::{
+    AlgebraicOperator, BooleanOperator, ComparisonOperator, Expression,
+};
 
 use crate::parsing::lexer::Token;
 
@@ -35,21 +37,34 @@ where
     }
 }
 
-pub fn parse_arithmatic_operator<'a>(stream: &'a [Token]) -> IResult<&'a [Token], AlgebraicOperator> {
+pub fn parse_term_operator<'a>(stream: &'a [Token]) -> IResult<&'a [Token], AlgebraicOperator> {
     alt((
         value(AlgebraicOperator::Add, tag(Token::Plus)),
         value(AlgebraicOperator::Sub, tag(Token::Minus)),
+    ))(stream)
+}
+
+pub fn parse_factor_operator<'a>(stream: &'a [Token]) -> IResult<&'a [Token], AlgebraicOperator> {
+    alt((
         value(AlgebraicOperator::Divide, tag(Token::Divide)),
         value(AlgebraicOperator::Mult, tag(Token::Multiply)),
     ))(stream)
 }
 
-pub fn parse_comparison_operator<'a>(stream: &'a [Token]) -> IResult<&'a [Token], ComparisonOperator> {
+pub fn parse_comparison_operator<'a>(
+    stream: &'a [Token],
+) -> IResult<&'a [Token], ComparisonOperator> {
     alt((
         value(ComparisonOperator::LessThan, tag(Token::LessThan)),
-        value(ComparisonOperator::LessThanOrEqualTo, tag(Token::LessThanOrEqualTo)),
+        value(
+            ComparisonOperator::LessThanOrEqualTo,
+            tag(Token::LessThanOrEqualTo),
+        ),
         value(ComparisonOperator::GreaterThan, tag(Token::GreaterThan)),
-        value(ComparisonOperator::GreaterThanOrEqualTo, tag(Token::GreaterThanOrEqualTo)),
+        value(
+            ComparisonOperator::GreaterThanOrEqualTo,
+            tag(Token::GreaterThanOrEqualTo),
+        ),
         value(ComparisonOperator::EqualTo, tag(Token::EqualEquals)),
         value(ComparisonOperator::NotEqualTo, tag(Token::NotEquals)),
     ))(stream)
@@ -63,17 +78,21 @@ pub fn parse_boolean_operator<'a>(stream: &'a [Token]) -> IResult<&'a [Token], B
 }
 
 pub fn parse_arithmatic_expression<'a>(stream: &'a [Token]) -> IResult<&'a [Token], Expression> {
-    map(
-        separated_list(parse_arithmatic_operator, parse_arithmatic_term),
-        |v| Expression::Debug(v.clone())
-    )(stream)
+    let (rem, init) = parse_arithmatic_term(stream)?;
+    fold_many0(
+        pair(parse_term_operator, parse_arithmatic_expression),
+        init,
+        |acc, (op, rhs)| Expression::AlgebraicExpression(op, Box::new(acc), Box::new(rhs)),
+    )(rem)
 }
 
 pub fn parse_arithmatic_term<'a>(stream: &'a [Token]) -> IResult<&'a [Token], Expression> {
-    map(
-        separated_list(parse_arithmatic_operator, parse_arithmatic_factor),
-        |v| Expression::Debug(v.clone())
-    )(stream)
+    let (rem, init) = parse_arithmatic_factor(stream)?;
+    fold_many0(
+        pair(parse_factor_operator, parse_arithmatic_factor),
+        init,
+        |acc, (op, rhs)| Expression::AlgebraicExpression(op, Box::new(acc), Box::new(rhs)),
+    )(rem)
 }
 
 pub fn parse_arithmatic_factor<'a>(stream: &'a [Token]) -> IResult<&'a [Token], Expression> {
@@ -105,7 +124,11 @@ pub fn parse_object_property<'a>(
     stream: &'a [Token],
 ) -> IResult<&'a [Token], (String, Expression)> {
     map(
-        tuple((test(Token::is_ident), tag(Token::Colon), parse_arithmatic_expression)),
+        tuple((
+            test(Token::is_ident),
+            tag(Token::Colon),
+            parse_arithmatic_expression,
+        )),
         |(ident, _, expr)| match ident {
             Token::Ident(s) => (s.clone(), expr),
             _ => unreachable!(),

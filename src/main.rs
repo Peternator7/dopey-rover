@@ -2,9 +2,13 @@ use dopey_rover::parsing::lexer;
 use dopey_rover::parsing::parser;
 
 fn main() {
-    let program = r#"new { x: true, y: true - false} + true - false * false"#;
+    let program = r#"True - ( False + "random")"#;
 
     if let Ok((_, toks)) = lexer::tokenize(program) {
-        println!("{:?}", parser::parse_arithmatic_expression(&*toks));
+        println!("{:?}", toks);
+        println!(
+            "{:?}",
+            parser::expression::parse_top_level_expression(&*toks)
+        );
     }
 }

@@ -2,10 +2,17 @@
 top_level_expression :=
     boolean_expression
 
-
 boolean_expression :=
     comparison_expression '&&' boolean_expression
     comparison_expression '||' boolean_expression
+    comparison_expression
+
+return_expression :=
+    'return' test_expression
+    test_expression
+
+test_expression :=
+    comparison_expression 'is' comparison_expression
     comparison_expression
 
 comparison_expression :=
@@ -15,28 +22,54 @@ comparison_expression :=
     arithmatic_expression '>=' arithmatic_expression
     arithmatic_expression '!=' arithmatic_expression
     arithmatic_expression '==' arithmatic_expression
+    arithmatic_expression
 
 arithmatic_expression :=
     arithmatic_term '+' arithmatic_expression
     arithmatic_term '-' arithmatic_expression
 
 arithmatic_term :=
-    factor '*' arithmatic_term
-    factor '/' arithmatic_term
-    factor
+    arithmatic_factor '*' arithmatic_term
+    arithmatic_factor '/' arithmatic_term
+    arithmatic_factor '%' arithmatic_term
+    arithmatic_factor
 
 arithmatic_factor :=
-    call-expr
-    literal
-    new-object-expr
-    array-expr
+    call_expression
+
+call_expression :=
+    call_lhs_expression (top_level_expression)*
+
+call_lhs_expression :=
+    if_else_expression
+    object_lookup_expression
+
+object_lookup_expression :=
+    basic_expression (object_lookup_accessors)?
+
+object_lookup_accessors
+    '.' ident (object_lookup_accessors)?
+
+if_else_expression :=
+    'if' top_level_expression block_expression 'else' block_expression
+
+basic_expression :=
+    string_literal
+    number_literal
+    array_literal_expression
+    new_object_expression
+    get_expression
+    ident
     '(' top_level_expression ')'
 
-call-expr :=
-    property-lookup (top_level_expression)*
+block_expression :=
+    '{' top_level_expression '}'
 
-property-lookup :=
-    ident '.' property-lookup
+get_expression :=
+    '@get' '(' trait_name ',' object_lookup_expression ')'
+
+set_statement :=
+    ident '=' '@set' '(' trait_object ',' object_lookup_expression ')' ';'
 
 new-object-expr :=
     'new' '{'

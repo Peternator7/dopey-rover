@@ -8,12 +8,11 @@ pub enum Token {
     From,
     With,
     New,
+    Is,
+    Return,
 
     Set,
     Get,
-
-    True,
-    False,
 
     Ident(String),
     Number(f32),
@@ -24,9 +23,11 @@ pub enum Token {
     Minus,
     Multiply,
     Divide,
+    Modulus,
 
     AndAnd,
     OrOr,
+    Coalesce,
 
     LessThan,
     LessThanOrEqualTo,
@@ -67,5 +68,5 @@ impl Token {
     generate_is_a_!(is_indented, Token::Indented(_));
     generate_is_a_!(is_ident, Token::Ident(_));
     generate_is_a_!(is_number, Token::Number(_));
-    generate_is_a_!(is_string, Token::StringLiteral(_));
+    generate_is_a_!(is_string_literal, Token::StringLiteral(_));
 }

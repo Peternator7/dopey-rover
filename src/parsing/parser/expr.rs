@@ -4,6 +4,7 @@ pub enum AlgebraicOperator {
     Sub,
     Mult,
     Divide,
+    Modulus,
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
@@ -32,4 +33,5 @@ pub enum Expression {
     ComparisonExpression(ComparisonOperator, Box<Expression>, Box<Expression>),
     BooleanExpression(BooleanOperator, Box<Expression>, Box<Expression>),
     Debug(Vec<Expression>),
+    TestExpression(Box<Expression>, Box<Expression>),
 }

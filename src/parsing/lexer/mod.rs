@@ -1,5 +1,5 @@
 use nom::branch::alt;
-use nom::bytes::complete::tag;
+use nom::bytes::complete::{tag, take_while};
 use nom::character::complete::{alpha1, alphanumeric0, line_ending, multispace0, space0, space1};
 use nom::combinator::{map, map_res, not, recognize};
 use nom::multi::many0;
@@ -26,15 +26,14 @@ fn parse_alphanumeric(s: &str) -> ParsedToken {
         "from" => Token::From,
         "with" => Token::With,
         "new" => Token::New,
-        "true" => Token::True,
-        "false" => Token::False,
+        "is" => Token::Is,
         _ => Token::Ident(s.to_string()),
     })(s)
 }
 
 fn parse_string(s: &str) -> ParsedToken {
     map(
-        tuple((tag("\""), recognize(not(tag("\""))), tag("\""))),
+        tuple((tag("\""), recognize(take_while(|c| c != '"')), tag("\""))),
         |(_, s, _): (&str, &str, &str)| Token::StringLiteral(s.to_string()),
     )(s)
 }
@@ -49,6 +48,7 @@ fn parse_get_set(s: &str) -> ParsedToken {
 
 fn parse_operators(s: &str) -> ParsedToken {
     alt((
+        map(tag("??"), |_| Token::Coalesce),
         map(tag("&&"), |_| Token::AndAnd),
         map(tag("||"), |_| Token::OrOr),
         map(tag("!="), |_| Token::NotEquals),
@@ -61,6 +61,7 @@ fn parse_operators(s: &str) -> ParsedToken {
         map(tag("-"), |_| Token::Minus),
         map(tag("/"), |_| Token::Divide),
         map(tag("*"), |_| Token::Multiply),
+        map(tag("%"), |_| Token::Modulus),
     ))(s)
 }
 

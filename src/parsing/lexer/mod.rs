@@ -27,6 +27,7 @@ fn parse_alphanumeric(s: &str) -> ParsedToken {
         "with" => Token::With,
         "new" => Token::New,
         "is" => Token::Is,
+        "return" => Token::Return,
         _ => Token::Ident(s.to_string()),
     })(s)
 }

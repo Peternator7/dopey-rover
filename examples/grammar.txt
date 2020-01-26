@@ -1,6 +1,11 @@
 
+// Here's all the expressions in the world.
+
 top_level_expression :=
     boolean_expression
+    if_else_expression
+    match_expression
+    if_let_else_expression
 
 boolean_expression :=
     comparison_expression '&&' boolean_expression
@@ -38,7 +43,7 @@ arithmatic_factor :=
     call_expression
 
 call_expression :=
-    call_lhs_expression (top_level_expression)*
+    call_lhs_expression+
 
 call_lhs_expression :=
     if_else_expression
@@ -75,7 +80,68 @@ new-object-expr :=
     'new' '{'
         (prototype-list 'with')?
         object-properties
+        (','' '..' basic_expression)?
     '}'
 
 object-properties :=
     ident ':' top_level_expression
+
+// Patterns
+
+top_level_pattern :=
+    head_pattern
+
+head_pattern :=
+    basic_pattern :: head_pattern
+    basic_pattern
+
+basic_pattern :=
+    assignable_pattern
+    test_pattern
+    literal_pattern
+
+assignable_pattern :=
+    object_pattern
+    list_pattern
+    identifier_pattern
+    test_assign_pattern
+
+object_pattern :=
+    '{' property_destructuring '}'
+
+list_pattern :=
+    '[' (top_level_pattern)* ']'
+
+head_pattern :=
+    top_level_pattern :: head_pattern
+
+identifier_pattern :=
+    ident
+
+literal_pattern :=
+    String
+    Number
+
+test_assign_pattern :=
+    '?' object_lookup_expression assignable_pattern
+
+test_pattern :=
+    '?' object_lookup_expression
+
+// Statements
+
+assignment :=
+    assignable_pattern '=' top_level_expression
+
+
+// Items
+
+import :=
+    'import' ident ('.' ident)*
+
+function_declaration :=
+    'let' ident ident+ = top_level_expression
+    'let' ident ident+ = block_expression
+
+object_declaration :=
+    'let' ident = top_level_expression

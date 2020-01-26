@@ -1,7 +1,7 @@
 use nom::branch::alt;
 use nom::combinator::map;
 use nom::multi::separated_list;
-use nom::sequence::{pair, preceded, tuple};
+use nom::sequence::{tuple};
 use nom::IResult;
 
 use super::{parse_top_level_expression, Expression, ParsedExpression};
@@ -52,6 +52,17 @@ pub fn parse_get_expression(stream: &[Token]) -> ParsedExpression {
 }
 
 pub fn parse_parens_expression(stream: &[Token]) -> ParsedExpression {
+    map(
+        tuple((
+            tag(Token::OpenParen),
+            parse_top_level_expression,
+            tag(Token::CloseParen),
+        )),
+        |(_, expr, _)| expr,
+    )(stream)
+}
+
+pub fn parse_array_expression(stream: &[Token]) -> ParsedExpression {
     map(
         tuple((
             tag(Token::OpenParen),

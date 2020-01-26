@@ -5,13 +5,8 @@ interface Mappable {
 }
 
 OptionMappable = new Mappable {
-    lift target = { Some with value: target }
-    map fn target =
-        match {
-            target is None -> target
-            target is Some -> lift (fn target.Value)
-            _ -> @next.map fn target
-        }
+    lift target = new { Some with value: target }
+    map fn target = target.Value && self.lift (fn target.Value) || None
 }
 
 None = new {};
@@ -26,4 +21,11 @@ function SafeDivide a b = {
     @set(OptionMappable, Some)
     context = @get(Mappable, Some)
     Monad.bind a (value)
+}
+
+
+function unpack_http_request req = {
+    match req {
+        { Method: Get } => None
+    }
 }

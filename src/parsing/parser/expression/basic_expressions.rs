@@ -1,14 +1,14 @@
 use nom::branch::alt;
 use nom::combinator::map;
 use nom::multi::separated_list;
-use nom::sequence::{tuple};
+use nom::sequence::tuple;
 use nom::IResult;
 
 use super::{parse_top_level_expression, Expression, ParsedExpression};
 use crate::parsing::lexer::Token;
 use crate::parsing::parser::{extract_identifier, tag, test};
 
-pub fn parse_basic_expression<'a>(stream: &'a [Token]) -> ParsedExpression<'a> {
+pub fn parse_basic_expression(stream: &[Token]) -> ParsedExpression {
     alt((
         parse_new_object,
         parse_string_literal,
@@ -19,18 +19,18 @@ pub fn parse_basic_expression<'a>(stream: &'a [Token]) -> ParsedExpression<'a> {
     ))(stream)
 }
 
-pub fn parse_ident_expression<'a>(stream: &'a [Token]) -> ParsedExpression<'a> {
-    map(extract_identifier, |ident| Expression::Variable(ident))(stream)
+pub fn parse_ident_expression(stream: &[Token]) -> ParsedExpression {
+    map(extract_identifier, Expression::Variable)(stream)
 }
 
-pub fn parse_string_literal<'a>(stream: &'a [Token]) -> ParsedExpression<'a> {
+pub fn parse_string_literal(stream: &[Token]) -> ParsedExpression {
     map(test(Token::is_string_literal), |tok| match tok {
         Token::StringLiteral(s) => Expression::StringLiteral(s.clone()),
         _ => unreachable!(),
     })(stream)
 }
 
-pub fn parse_number_literal<'a>(stream: &'a [Token]) -> ParsedExpression<'a> {
+pub fn parse_number_literal(stream: &[Token]) -> ParsedExpression {
     map(test(Token::is_number), |tok| match tok {
         Token::Number(f) => Expression::Number(*f),
         _ => unreachable!(),

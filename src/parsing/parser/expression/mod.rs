@@ -61,7 +61,7 @@ pub fn parse_return_expression(stream: &[Token]) -> ParsedExpression {
     map(
         pair(opt(tag(Token::Return)), parse_test_expression),
         |(ret, expr)| {
-            if let Some(_) = ret {
+            if ret.is_some() {
                 Expression::ReturnExpression(Box::new(expr))
             } else {
                 expr

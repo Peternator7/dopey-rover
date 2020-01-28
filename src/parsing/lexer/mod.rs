@@ -1,7 +1,7 @@
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take_while};
 use nom::character::complete::{alpha1, alphanumeric0, line_ending, multispace0, space0, space1};
-use nom::combinator::{map, map_res, not, recognize};
+use nom::combinator::{map, map_res, recognize};
 use nom::multi::many0;
 use nom::sequence::{pair, preceded, terminated, tuple};
 use nom::IResult;
@@ -20,6 +20,7 @@ fn parse_alphanumeric(s: &str) -> ParsedToken {
     map(recognize(pair(alpha1, alphanumeric0)), |s| match s {
         "function" => Token::Function,
         "interface" => Token::Interface,
+        "trait" => Token::Trait,
         "if" => Token::If,
         "else" => Token::Else,
         "import" => Token::Import,
@@ -49,7 +50,6 @@ fn parse_get_set(s: &str) -> ParsedToken {
 
 fn parse_operators(s: &str) -> ParsedToken {
     alt((
-        map(tag("??"), |_| Token::Coalesce),
         map(tag("&&"), |_| Token::AndAnd),
         map(tag("||"), |_| Token::OrOr),
         map(tag("!="), |_| Token::NotEquals),
@@ -69,12 +69,14 @@ fn parse_operators(s: &str) -> ParsedToken {
 fn parse_symbol(s: &str) -> ParsedToken {
     alt((
         parse_operators,
+        map(tag("?"), |_| Token::QuestionMark),
         map(tag("("), |_| Token::OpenParen),
         map(tag(")"), |_| Token::CloseParen),
         map(tag("{"), |_| Token::OpenBrace),
         map(tag("}"), |_| Token::CloseBrace),
         map(tag("["), |_| Token::OpenBracket),
         map(tag("]"), |_| Token::CloseBracket),
+        map(tag("::"), |_| Token::DoubleColon),
         map(tag(":"), |_| Token::Colon),
         map(tag("."), |_| Token::Period),
         map(tag(","), |_| Token::Comma),

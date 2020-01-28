@@ -8,12 +8,12 @@ top_level_expression :=
     if_let_else_expression
 
 boolean_expression :=
-    comparison_expression '&&' boolean_expression
-    comparison_expression '||' boolean_expression
-    comparison_expression
-
-return_expression :=
-    'return' test_expression
+    test_expression '&&' boolean_expression
+    test_expression '||' boolean_expression
+    test_expression '&&' 'return' test_expression
+    test_expression '||' 'return' test_expression
+    test_expression '&&' 'return'
+    test_expression '||' 'return'
     test_expression
 
 test_expression :=
@@ -46,7 +46,6 @@ call_expression :=
     call_lhs_expression+
 
 call_lhs_expression :=
-    if_else_expression
     object_lookup_expression
 
 object_lookup_expression :=
@@ -76,12 +75,15 @@ get_expression :=
 set_statement :=
     ident '=' '@set' '(' trait_object ',' object_lookup_expression ')' ';'
 
-new-object-expr :=
+new_object_expr :=
     'new' '{'
         (prototype-list 'with')?
         object-properties
         (','' '..' basic_expression)?
     '}'
+
+new_trait_object_expr :=
+    'new' object_lookup_expression '{' '}'
 
 object-properties :=
     ident ':' top_level_expression
@@ -96,15 +98,11 @@ head_pattern :=
     basic_pattern
 
 basic_pattern :=
-    assignable_pattern
     test_pattern
     literal_pattern
-
-assignable_pattern :=
     object_pattern
     list_pattern
     identifier_pattern
-    test_assign_pattern
 
 object_pattern :=
     '{' property_destructuring '}'
@@ -122,26 +120,27 @@ literal_pattern :=
     String
     Number
 
-test_assign_pattern :=
-    '?' object_lookup_expression assignable_pattern
-
 test_pattern :=
-    '?' object_lookup_expression
+    '?' object_lookup_expression (assignable_pattern)?
 
 // Statements
 
 assignment :=
-    assignable_pattern '=' top_level_expression
+    top_level_pattern '=' top_level_expression
 
 
-// Items
+// Top Level Items
 
 import :=
-    'import' ident ('.' ident)*
+    'import' ident ('.' ident)* ';'
 
 function_declaration :=
-    'let' ident ident+ = top_level_expression
-    'let' ident ident+ = block_expression
+    ident ident+ '=' top_level_expression ';'
+    ident ident+ '=' block_expression
 
 object_declaration :=
-    'let' ident = top_level_expression
+    ident '=' top_level_expression
+
+trait_declaration :=
+    ident '=' 'trait' '{' '}'
+

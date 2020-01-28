@@ -2,6 +2,7 @@
 pub enum Token {
     Function,
     Interface,
+    Trait,
     If,
     Else,
     Import,
@@ -27,7 +28,8 @@ pub enum Token {
 
     AndAnd,
     OrOr,
-    Coalesce,
+
+    QuestionMark,
 
     LessThan,
     LessThanOrEqualTo,
@@ -45,6 +47,7 @@ pub enum Token {
 
     Period,
     Comma,
+    DoubleColon,
     Colon,
     SemiColon,
     Exclamation,

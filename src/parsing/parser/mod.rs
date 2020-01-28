@@ -1,4 +1,6 @@
 pub mod expression;
+pub mod item;
+pub mod pattern;
 
 use nom::combinator::map;
 use nom::error::ErrorKind;
@@ -28,7 +30,7 @@ where
     }
 }
 
-pub fn extract_identifier<'a>(stream: &'a [Token]) -> IResult<&[Token], String> {
+pub fn extract_identifier(stream: &[Token]) -> IResult<&[Token], String> {
     map(test(Token::is_ident), |tok| match tok {
         Token::Ident(s) => s.clone(),
         _ => unreachable!(),

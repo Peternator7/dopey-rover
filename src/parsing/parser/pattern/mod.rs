@@ -16,9 +16,9 @@ pub enum Pattern {
     Number(f32),
     StringLiteral(String),
     Identifier(String),
-    HeadPattern(Box<Pattern>, Box<Pattern>),
     ObjectDestructuring(Vec<PropertyPattern>),
-    ArrayDestructuring(Vec<Pattern>),
+    ConsPattern(Box<Pattern>, Box<Pattern>),
+    NilArrayPattern,
     TestPattern(Expression, Option<Box<Pattern>>),
 }
 
@@ -28,11 +28,9 @@ impl Pattern {
             Pattern::Number(_) => false,
             Pattern::StringLiteral(_) => false,
             Pattern::Identifier(_) => true,
-            Pattern::HeadPattern(ref head, ref tail) => {
-                head.is_assignable() || tail.is_assignable()
-            }
             Pattern::ObjectDestructuring(props) => !props.is_empty(),
-            Pattern::ArrayDestructuring(elems) => elems.iter().any(Pattern::is_assignable),
+            Pattern::ConsPattern(head, tail) => head.is_assignable() || tail.is_assignable(),
+            Pattern::NilArrayPattern => false,
             Pattern::TestPattern(_, None) => false,
             Pattern::TestPattern(_, Some(pat)) => pat.is_assignable(),
         }
@@ -54,7 +52,7 @@ pub fn parse_head_pattern(stream: &[Token]) -> ParsedPattern {
     fold_many0(
         pair(tag(Token::DoubleColon), parse_head_pattern),
         init,
-        |acc, (_, rhs)| Pattern::HeadPattern(Box::new(acc), Box::new(rhs)),
+        |acc, (_, rhs)| Pattern::ConsPattern(Box::new(acc), Box::new(rhs)),
     )(rem)
 }
 
@@ -96,7 +94,7 @@ pub fn parse_test_pattern(stream: &[Token]) -> ParsedPattern {
     map(
         tuple((
             tag(Token::QuestionMark),
-            parse_object_lookup_expression,
+            parse_object_lookup_expression(false),
             opt(parse_basic_pattern),
         )),
         |(_, parent, unpacked)| Pattern::TestPattern(parent, unpacked.map(Box::new)),
@@ -132,12 +130,29 @@ pub fn parse_object_pattern(stream: &[Token]) -> ParsedPattern {
 }
 
 pub fn parse_array_pattern(stream: &[Token]) -> ParsedPattern {
+    fn parse_array_pattern_inner(stream: &[Token]) -> ParsedPattern {
+        use Pattern::*;
+
+        let res = parse_top_level_pattern(stream);
+        if res.is_err() {
+            return Ok((stream, NilArrayPattern));
+        }
+
+        let (rem, head) = res.unwrap();
+        let res = preceded(tag(Token::Comma), parse_array_pattern_inner)(rem);
+        if let Ok((rem, tail)) = res {
+            Ok((rem, ConsPattern(Box::new(head), Box::new(tail))))
+        } else {
+            Ok((rem, ConsPattern(Box::new(head), Box::new(NilArrayPattern))))
+        }
+    }
+
     map(
         tuple((
             tag(Token::OpenBracket),
-            separated_list(tag(Token::Comma), parse_top_level_pattern),
+            parse_array_pattern_inner,
             tag(Token::CloseBracket),
         )),
-        |(_, elements, _)| Pattern::ArrayDestructuring(elements),
+        |(_, elements, _)| elements,
     )(stream)
 }

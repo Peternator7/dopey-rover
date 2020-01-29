@@ -3,9 +3,19 @@
 
 top_level_expression :=
     boolean_expression
+    block_like_expression
+
+block_like_expression :=
     if_else_expression
     match_expression
     if_let_else_expression
+    block_expression
+
+block_expression :=
+    '{' top_level_expression '}'
+
+if_else_expression :=
+    'if' top_level_expression block_expression 'else' block_expression
 
 boolean_expression :=
     test_expression '&&' boolean_expression
@@ -46,6 +56,10 @@ call_expression :=
     call_lhs_expression+
 
 call_lhs_expression :=
+    head_expression
+
+head_expression :=
+    object_lookup_expression :: head_expression
     object_lookup_expression
 
 object_lookup_expression :=
@@ -54,20 +68,15 @@ object_lookup_expression :=
 object_lookup_accessors
     '.' ident (object_lookup_accessors)?
 
-if_else_expression :=
-    'if' top_level_expression block_expression 'else' block_expression
-
 basic_expression :=
     string_literal
     number_literal
     array_literal_expression
     new_object_expression
+    new_trait_object_expression
     get_expression
     ident
     '(' top_level_expression ')'
-
-block_expression :=
-    '{' top_level_expression '}'
 
 get_expression :=
     '@get' '(' trait_name ',' object_lookup_expression ')'
@@ -125,9 +134,11 @@ test_pattern :=
 
 // Statements
 
-assignment :=
-    top_level_pattern '=' top_level_expression
-
+statement :=
+    // Functions can be declared locally, but not traits.
+    function_declaration
+    'try' top_level_expression
+    object_declaration
 
 // Top Level Items
 
@@ -136,11 +147,12 @@ import :=
 
 function_declaration :=
     ident ident+ '=' top_level_expression ';'
-    ident ident+ '=' block_expression
+    ident ident+ '=' block_like_expression
 
 object_declaration :=
-    ident '=' top_level_expression
+    // Block like expressions don't need a trailing semi-colon
+    ident '=' block_like_expression
+    ident '=' top_level_expression ';'
 
 trait_declaration :=
     ident '=' 'trait' '{' '}'
-

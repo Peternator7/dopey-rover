@@ -20,18 +20,35 @@ pub enum Expression {
     Number(f32),
     StringLiteral(String),
     NewObject(usize),
+    ConsArrayExpression(Box<Expression>, Box<Expression>),
+    NilArrayExpression,
     Variable(String),
     AlgebraicExpression(AlgebraicOperator, Box<Expression>, Box<Expression>),
     ComparisonExpression(ComparisonOperator, Box<Expression>, Box<Expression>),
     BooleanExpression(BooleanOperator, Box<Expression>, Box<Expression>),
+    BooleanReturnExpression(BooleanOperator, Box<Expression>, Option<Box<Expression>>),
     GetExpression(String, Box<Expression>),
     TestExpression(Box<Expression>, Box<Expression>),
-    ReturnExpression(Box<Expression>),
     // Lhs = Function Object
     // Rhs = Argument
     CallExpression(Box<Expression>, Box<Expression>),
     ObjectLookupExpression(Box<Expression>, String),
     IfElseExpression(Box<Expression>, Box<Expression>, Box<Expression>),
+    MatchExpression(Box<Expression>, Vec<()>),
+    BlockExpression(Vec<()>),
+    IfLetExpression,
+}
+
+impl Expression {
+    pub fn requires_trailing_semicolon(&self) -> bool {
+        match self {
+            Expression::IfElseExpression(_, _, _) => false,
+            Expression::IfLetExpression => false,
+            Expression::MatchExpression(_, _) => false,
+            Expression::BlockExpression(_) => false,
+            _ => true,
+        }
+    }
 }
 
 pub fn parse_top_level_expression(stream: &[Token]) -> ParsedExpression {
@@ -45,29 +62,53 @@ pub fn parse_boolean_operator<'a>(stream: &'a [Token]) -> IResult<&'a [Token], B
     ))(stream)
 }
 
-pub fn parse_boolean_expression(stream: &[Token]) -> ParsedExpression {
+pub fn parse_boolean_expression_2(stream: &[Token]) -> ParsedExpression {
     // In reality, we shouldn't let you 'return' multiple times
     // False || return True || return True
     // is nonsensical, but we can figure that out later. It's dead code
-    let (rem, init) = parse_return_expression(stream)?;
+    let (rem, init) = parse_test_expression(stream)?;
     fold_many0(
-        pair(parse_boolean_operator, parse_return_expression),
+        pair(parse_boolean_operator, parse_test_expression),
         init,
         |acc, (op, rhs)| Expression::BooleanExpression(op, Box::new(acc), Box::new(rhs)),
     )(rem)
 }
 
-pub fn parse_return_expression(stream: &[Token]) -> ParsedExpression {
-    map(
-        pair(opt(tag(Token::Return)), parse_test_expression),
-        |(ret, expr)| {
-            if ret.is_some() {
-                Expression::ReturnExpression(Box::new(expr))
-            } else {
-                expr
+pub fn parse_boolean_expression(stream: &[Token]) -> ParsedExpression {
+    // In reality, we shouldn't let you 'return' multiple times
+    // False || return True || return True
+    // is nonsensical, but we can figure that out later. It's dead code
+    let (mut remainder, mut output) = parse_test_expression(stream)?;
+
+    enum Rhs {
+        TestExpr(Box<Expression>),
+        Return(Option<Box<Expression>>),
+    }
+
+    loop {
+        let options = alt((
+            map(parse_test_expression, |expr| Rhs::TestExpr(Box::new(expr))),
+            map(
+                tuple((tag(Token::Return), opt(parse_test_expression))),
+                |(_, expr)| Rhs::Return(expr.map(Box::new)),
+            ),
+        ));
+
+        match pair(parse_boolean_operator, options)(remainder) {
+            Ok((rem, (op, Rhs::TestExpr(rhs)))) => {
+                remainder = rem;
+                output = Expression::BooleanExpression(op, Box::new(output), rhs)
             }
-        },
-    )(stream)
+            Ok((rem, (op, Rhs::Return(rhs)))) => {
+                remainder = rem;
+                output = Expression::BooleanReturnExpression(op, Box::new(output), rhs);
+                break;
+            }
+            Err(_) => break,
+        }
+    }
+
+    Ok((remainder, output))
 }
 
 pub fn parse_test_expression(stream: &[Token]) -> ParsedExpression {
@@ -164,16 +205,29 @@ pub fn parse_call_expression(stream: &[Token]) -> ParsedExpression {
 }
 
 pub fn parse_call_lhs_expression(stream: &[Token]) -> ParsedExpression {
-    alt((parse_object_lookup_expression, parse_if_else_expression))(stream)
+    alt((parse_head_expression, parse_if_else_expression))(stream)
 }
 
-pub fn parse_object_lookup_expression(stream: &[Token]) -> ParsedExpression {
-    let (rem, init) = parse_basic_expression(stream)?;
+pub fn parse_head_expression(stream: &[Token]) -> ParsedExpression {
+    let (rem, init) = parse_object_lookup_expression(true)(stream)?;
     fold_many0(
-        preceded(tag(Token::Period), extract_identifier),
+        pair(tag(Token::DoubleColon), parse_head_expression),
         init,
-        |acc, property| Expression::ObjectLookupExpression(Box::new(acc), property),
+        |acc, (_, rhs)| Expression::ConsArrayExpression(Box::new(acc), Box::new(rhs)),
     )(rem)
+}
+
+pub fn parse_object_lookup_expression(
+    allow_new_expressions: bool,
+) -> impl Fn(&[Token]) -> ParsedExpression {
+    move |stream| {
+        let (rem, init) = parse_basic_expression(stream)?;
+        fold_many0(
+            preceded(tag(Token::Period), extract_identifier),
+            init,
+            |acc, property| Expression::ObjectLookupExpression(Box::new(acc), property),
+        )(rem)
+    }
 }
 
 pub fn parse_if_else_expression(stream: &[Token]) -> ParsedExpression {

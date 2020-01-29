@@ -19,7 +19,6 @@ fn parse_float(s: &str) -> ParsedToken {
 fn parse_alphanumeric(s: &str) -> ParsedToken {
     map(recognize(pair(alpha1, alphanumeric0)), |s| match s {
         "function" => Token::Function,
-        "interface" => Token::Interface,
         "trait" => Token::Trait,
         "if" => Token::If,
         "else" => Token::Else,
@@ -29,6 +28,8 @@ fn parse_alphanumeric(s: &str) -> ParsedToken {
         "new" => Token::New,
         "is" => Token::Is,
         "return" => Token::Return,
+        "match" => Token::Match,
+        "try" => Token::Try,
         _ => Token::Ident(s.to_string()),
     })(s)
 }

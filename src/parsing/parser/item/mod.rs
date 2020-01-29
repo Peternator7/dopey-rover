@@ -1,10 +1,10 @@
 use nom::branch::alt;
 use nom::combinator::{map, opt};
 use nom::multi::{many0, separated_list};
-use nom::sequence::{pair, preceded, tuple};
+use nom::sequence::tuple;
 use nom::IResult;
 
-use super::{extract_identifier, tag, test};
+use super::{extract_identifier, tag};
 use crate::parsing::lexer::Token;
 use crate::parsing::parser::expression::parse_top_level_expression;
 use crate::parsing::parser::expression::Expression;
@@ -25,7 +25,7 @@ pub enum TraitItem {
     Function { name: String, args: usize },
 }
 
-pub fn parse_object(stream: &[Token]) -> ParsedItem {
+pub fn parse_object_assignment(stream: &[Token]) -> ParsedItem {
     map(
         tuple((
             extract_identifier,

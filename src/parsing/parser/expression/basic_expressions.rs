@@ -1,10 +1,12 @@
 use nom::branch::alt;
 use nom::combinator::map;
 use nom::multi::separated_list;
-use nom::sequence::tuple;
+use nom::sequence::{preceded, tuple};
 use nom::IResult;
 
-use super::{parse_top_level_expression, Expression, ParsedExpression};
+use super::{
+    parse_object_lookup_expression, parse_top_level_expression, Expression, ParsedExpression,
+};
 use crate::parsing::lexer::Token;
 use crate::parsing::parser::{extract_identifier, tag, test};
 
@@ -16,6 +18,7 @@ pub fn parse_basic_expression(stream: &[Token]) -> ParsedExpression {
         parse_ident_expression,
         parse_get_expression,
         parse_parens_expression,
+        parse_array_expression,
     ))(stream)
 }
 
@@ -62,17 +65,6 @@ pub fn parse_parens_expression(stream: &[Token]) -> ParsedExpression {
     )(stream)
 }
 
-pub fn parse_array_expression(stream: &[Token]) -> ParsedExpression {
-    map(
-        tuple((
-            tag(Token::OpenParen),
-            parse_top_level_expression,
-            tag(Token::CloseParen),
-        )),
-        |(_, expr, _)| expr,
-    )(stream)
-}
-
 pub fn parse_new_object(stream: &[Token]) -> ParsedExpression {
     map(
         tuple((
@@ -105,5 +97,33 @@ pub fn parse_object_property<'a>(
             Token::Ident(s) => (s.clone(), expr),
             _ => unreachable!(),
         },
+    )(stream)
+}
+
+pub fn parse_array_expression(stream: &[Token]) -> ParsedExpression {
+    fn parse_array_expression_inner(stream: &[Token]) -> ParsedExpression {
+        use Expression::*;
+
+        let res = parse_top_level_expression(stream);
+        if res.is_err() {
+            return Ok((stream, NilArrayExpression));
+        }
+
+        let (rem, head) = res.unwrap();
+        let res = preceded(tag(Token::Comma), parse_array_expression_inner)(rem);
+        if let Ok((rem, tail)) = res {
+            Ok((rem, ConsArrayExpression(Box::new(head), Box::new(tail))))
+        } else {
+            Ok((rem, ConsArrayExpression(Box::new(head), Box::new(NilArrayExpression))))
+        }
+    }
+
+    map(
+        tuple((
+            tag(Token::OpenBracket),
+            parse_array_expression_inner,
+            tag(Token::CloseBracket),
+        )),
+        |(_, elements, _)| elements,
     )(stream)
 }

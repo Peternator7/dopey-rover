@@ -1,7 +1,6 @@
 #[derive(PartialEq, Debug, PartialOrd, Clone)]
 pub enum Token {
     Function,
-    Interface,
     Trait,
     If,
     Else,
@@ -11,6 +10,8 @@ pub enum Token {
     New,
     Is,
     Return,
+    Match,
+    Try,
 
     Set,
     Get,

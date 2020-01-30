@@ -1,39 +1,22 @@
-use nom::branch::alt;
-use nom::combinator::{map, opt};
+use nom::combinator::map;
 use nom::multi::{many0, separated_list};
 use nom::sequence::tuple;
 use nom::IResult;
 
+use super::statement::Statement;
 use super::{extract_identifier, tag};
 use crate::parsing::lexer::Token;
-use crate::parsing::parser::expression::parse_top_level_expression;
-use crate::parsing::parser::expression::Expression;
 
 pub type ParsedItem<'a> = IResult<&'a [Token], Item>;
 
 pub enum Item {
-    Unknown,
-    FunctionDeclaration(String, Vec<String>, Expression),
-    ObjectDeclaration(String, Expression),
-    ModuleImport,
+    Statement(Statement),
     TraitDeclaration(String, Vec<TraitItem>),
-    TraitObjectDeclaration(String),
 }
 
 pub enum TraitItem {
     Property { name: String },
     Function { name: String, args: usize },
-}
-
-pub fn parse_object_assignment(stream: &[Token]) -> ParsedItem {
-    map(
-        tuple((
-            extract_identifier,
-            tag(Token::Equals),
-            parse_top_level_expression,
-        )),
-        |(ident, _, expr)| Item::ObjectDeclaration(ident, expr),
-    )(stream)
 }
 
 pub fn parse_trait_declaration(stream: &[Token]) -> ParsedItem {

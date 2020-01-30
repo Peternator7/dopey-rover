@@ -1,6 +1,7 @@
 pub mod expression;
 pub mod item;
 pub mod pattern;
+pub mod statement;
 
 use nom::combinator::map;
 use nom::error::ErrorKind;

@@ -3,10 +3,11 @@ pub mod operators;
 
 use nom::branch::alt;
 use nom::combinator::{map, opt, value};
-use nom::multi::fold_many0;
+use nom::multi::{fold_many0, many0};
 use nom::sequence::{pair, preceded, tuple};
 use nom::IResult;
 
+use super::statement::{parse_statement, Statement};
 use super::{extract_identifier, tag};
 use crate::parsing::lexer::Token;
 
@@ -19,7 +20,8 @@ pub type ParsedExpression<'a> = IResult<&'a [Token], Expression>;
 pub enum Expression {
     Number(f32),
     StringLiteral(String),
-    NewObject(usize),
+    NewObject(Vec<ObjectProperty>),
+    NewTraitObject(Box<Expression>, usize),
     ConsArrayExpression(Box<Expression>, Box<Expression>),
     NilArrayExpression,
     Variable(String),
@@ -35,8 +37,14 @@ pub enum Expression {
     ObjectLookupExpression(Box<Expression>, String),
     IfElseExpression(Box<Expression>, Box<Expression>, Box<Expression>),
     MatchExpression(Box<Expression>, Vec<()>),
-    BlockExpression(Vec<()>),
+    BlockExpression(Vec<Statement>, Option<Box<Expression>>),
     IfLetExpression,
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub struct ObjectProperty {
+    pub name: String,
+    pub value: Expression,
 }
 
 impl Expression {
@@ -45,14 +53,24 @@ impl Expression {
             Expression::IfElseExpression(_, _, _) => false,
             Expression::IfLetExpression => false,
             Expression::MatchExpression(_, _) => false,
-            Expression::BlockExpression(_) => false,
+            Expression::BlockExpression(_, _) => false,
             _ => true,
         }
     }
 }
 
 pub fn parse_top_level_expression(stream: &[Token]) -> ParsedExpression {
-    parse_boolean_expression(stream)
+    alt((
+        parse_boolean_expression,
+        parse_block_expression
+    ))(stream)
+}
+
+pub fn parse_block_expression(stream: &[Token]) -> ParsedExpression {
+    map(
+        tuple((tag(Token::OpenBrace), many0(parse_statement), opt(parse_top_level_expression), tag(Token::CloseBrace))),
+        |(_, stmts, expr, _)| Expression::BlockExpression(stmts, expr.map(Box::new)),
+    )(stream)
 }
 
 pub fn parse_boolean_operator<'a>(stream: &'a [Token]) -> IResult<&'a [Token], BooleanOperator> {
@@ -221,7 +239,7 @@ pub fn parse_object_lookup_expression(
     allow_new_expressions: bool,
 ) -> impl Fn(&[Token]) -> ParsedExpression {
     move |stream| {
-        let (rem, init) = parse_basic_expression(stream)?;
+        let (rem, init) = parse_basic_expression(allow_new_expressions)(stream)?;
         fold_many0(
             preceded(tag(Token::Period), extract_identifier),
             init,
@@ -242,16 +260,5 @@ pub fn parse_if_else_expression(stream: &[Token]) -> ParsedExpression {
         |(_, cond, if_block, _, else_block)| {
             Expression::IfElseExpression(Box::new(cond), Box::new(if_block), Box::new(else_block))
         },
-    )(stream)
-}
-
-pub fn parse_block_expression(stream: &[Token]) -> ParsedExpression {
-    map(
-        tuple((
-            tag(Token::OpenBrace),
-            parse_top_level_expression,
-            tag(Token::CloseBrace),
-        )),
-        |(_, expr, _)| expr,
     )(stream)
 }

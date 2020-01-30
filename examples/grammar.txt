@@ -92,7 +92,7 @@ new_object_expr :=
     '}'
 
 new_trait_object_expr :=
-    'new' object_lookup_expression '{' '}'
+    'new' object_lookup_expression '{' function_declaration* '}'
 
 object-properties :=
     ident ':' top_level_expression

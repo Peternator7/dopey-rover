@@ -79,6 +79,7 @@ fn parse_symbol(s: &str) -> ParsedToken {
         map(tag("]"), |_| Token::CloseBracket),
         map(tag("::"), |_| Token::DoubleColon),
         map(tag(":"), |_| Token::Colon),
+        map(tag(";"), |_| Token::SemiColon),
         map(tag("."), |_| Token::Period),
         map(tag(","), |_| Token::Comma),
         map(tag("!"), |_| Token::Exclamation),

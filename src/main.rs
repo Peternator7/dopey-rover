@@ -2,11 +2,24 @@ use dopey_rover::parsing::lexer;
 use dopey_rover::parsing::parser;
 
 fn main() {
-    let program = r#"MyFunction a b = {
-    True = new {};
-    False = new {};
-    Some = new {};
-    None = new {};
+    let program = r#"
+True = {};
+Some = {
+    Value = True,
+    Map a b = a + b,
+};
+
+Functor = trait {
+    Map fn a,
+    Lift a
+};
+
+Options = ["Red", "Blue", "Yellow"];
+
+MyFunction a b = {
+    False = {};
+    Some = {};
+    None = {};
     (1 + 1) :: "a" :: []
 };"#;
 
@@ -14,7 +27,7 @@ fn main() {
         // println!("{:?}", toks);
         println!(
             "{:?}",
-            parser::statement::parse_statement(&*toks).unwrap().1 //parser::pattern::parse_top_level_pattern(&*toks)
+            parser::parse_program(&*toks).unwrap().1 //parser::pattern::parse_top_level_pattern(&*toks)
         );
     }
 }

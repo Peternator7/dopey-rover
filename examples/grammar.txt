@@ -85,7 +85,7 @@ set_statement :=
     ident '=' '@set' '(' trait_object ',' object_lookup_expression ')' ';'
 
 new_object_expr :=
-    'new' '{'
+    '{'
         (prototype-list 'with')?
         object-properties
         (','' '..' object_lookup_expression)?
@@ -96,7 +96,7 @@ prototype_list :=
     object_lookup_expression* '..' object_lookup_expression
 
 new_trait_object_expr :=
-    'new' object_lookup_expression '{' function_declaration* '}'
+    ident ('.' ident)* '{' function_declaration* '}'
 
 object-properties :=
     ident ':' top_level_expression

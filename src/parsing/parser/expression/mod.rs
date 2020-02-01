@@ -7,6 +7,7 @@ use nom::multi::{fold_many0, many0};
 use nom::sequence::{pair, preceded, tuple};
 use nom::IResult;
 
+use super::pattern::Pattern;
 use super::statement::{parse_statement, Statement};
 use super::{extract_identifier, tag};
 use crate::parsing::lexer::Token;
@@ -43,7 +44,7 @@ pub enum Expression {
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct ObjectProperty {
-    pub name: String,
+    pub name: Pattern,
     pub value: Expression,
 }
 
@@ -60,15 +61,17 @@ impl Expression {
 }
 
 pub fn parse_top_level_expression(stream: &[Token]) -> ParsedExpression {
-    alt((
-        parse_boolean_expression,
-        parse_block_expression
-    ))(stream)
+    alt((parse_boolean_expression, parse_block_expression))(stream)
 }
 
 pub fn parse_block_expression(stream: &[Token]) -> ParsedExpression {
     map(
-        tuple((tag(Token::OpenBrace), many0(parse_statement), opt(parse_top_level_expression), tag(Token::CloseBrace))),
+        tuple((
+            tag(Token::OpenBrace),
+            many0(parse_statement),
+            opt(parse_top_level_expression),
+            tag(Token::CloseBrace),
+        )),
         |(_, stmts, expr, _)| Expression::BlockExpression(stmts, expr.map(Box::new)),
     )(stream)
 }

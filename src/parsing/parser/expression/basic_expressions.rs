@@ -1,14 +1,12 @@
 use nom::branch::alt;
-use nom::combinator::map;
-use nom::multi::separated_list;
+use nom::combinator::{map, opt};
+use nom::multi::separated_nonempty_list;
 use nom::sequence::{preceded, tuple};
 use nom::IResult;
 
-use super::{
-    parse_object_lookup_expression, parse_top_level_expression, Expression, ObjectProperty,
-    ParsedExpression,
-};
+use super::{parse_top_level_expression, Expression, ObjectProperty, ParsedExpression};
 use crate::parsing::lexer::Token;
+use crate::parsing::parser::pattern::parse_object_creation_property_pattern;
 use crate::parsing::parser::{extract_identifier, tag, test};
 
 pub fn parse_basic_expression(allow_new_object: bool) -> impl Fn(&[Token]) -> ParsedExpression {
@@ -16,7 +14,6 @@ pub fn parse_basic_expression(allow_new_object: bool) -> impl Fn(&[Token]) -> Pa
         if allow_new_object {
             alt((
                 parse_new_object,
-                parse_new_trait_object,
                 parse_string_literal,
                 parse_number_literal,
                 parse_ident_expression,
@@ -83,35 +80,35 @@ pub fn parse_parens_expression(stream: &[Token]) -> ParsedExpression {
 pub fn parse_new_object(stream: &[Token]) -> ParsedExpression {
     map(
         tuple((
-            tag(Token::New),
             tag(Token::OpenBrace),
             parse_object_property_list,
             tag(Token::CloseBrace),
         )),
-        |(_, _, result, _)| result,
+        |(_, result, _)| result,
     )(stream)
 }
 
 pub fn parse_object_property_list(stream: &[Token]) -> ParsedExpression {
     map(
-        separated_list(tag(Token::Comma), parse_object_property),
-        |props| Expression::NewObject(props),
+        tuple((
+            separated_nonempty_list(tag(Token::Comma), parse_object_property),
+            opt(tag(Token::Comma)),
+        )),
+        |(props, _)| Expression::NewObject(props),
     )(stream)
+    .or_else(|_| Ok((stream, Expression::NewObject(Vec::new()))))
 }
 
 pub fn parse_object_property<'a>(stream: &'a [Token]) -> IResult<&'a [Token], ObjectProperty> {
     map(
         tuple((
-            test(Token::is_ident),
-            tag(Token::Colon),
+            parse_object_creation_property_pattern,
+            tag(Token::Equals),
             parse_top_level_expression,
         )),
-        |(ident, _, expr)| match ident {
-            Token::Ident(s) => ObjectProperty {
-                name: s.clone(),
-                value: expr,
-            },
-            _ => unreachable!(),
+        |(patt, _, expr)| ObjectProperty {
+            name: patt,
+            value: expr,
         },
     )(stream)
 }
@@ -144,19 +141,6 @@ pub fn parse_array_expression(stream: &[Token]) -> ParsedExpression {
             tag(Token::CloseBracket),
         )),
         |(_, elements, _)| elements,
-    )(stream)
-}
-
-pub fn parse_new_trait_object(stream: &[Token]) -> ParsedExpression {
-    map(
-        tuple((
-            tag(Token::New),
-            parse_object_lookup_expression(false),
-            tag(Token::OpenBrace),
-            parse_object_property_list,
-            tag(Token::CloseBrace),
-        )),
-        |(_, tr, _, result, _)| result,
     )(stream)
 }
 

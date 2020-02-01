@@ -5,6 +5,7 @@ pub mod statement;
 
 use nom::combinator::map;
 use nom::error::ErrorKind;
+use nom::multi::many0;
 use nom::Err;
 use nom::IResult;
 
@@ -36,4 +37,8 @@ pub fn extract_identifier(stream: &[Token]) -> IResult<&[Token], String> {
         Token::Ident(s) => s.clone(),
         _ => unreachable!(),
     })(stream)
+}
+
+pub fn parse_program(stream: &[Token]) -> IResult<&[Token], Vec<item::Item>> {
+    many0(item::parse_item)(stream)
 }

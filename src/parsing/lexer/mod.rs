@@ -113,5 +113,5 @@ fn parse_token(s: &str) -> ParsedToken {
 }
 
 pub fn tokenize(s: &str) -> IResult<&str, Vec<Token>> {
-    many0(terminated(parse_token, multispace0))(s)
+    preceded(multispace0, many0(terminated(parse_token, multispace0)))(s)
 }

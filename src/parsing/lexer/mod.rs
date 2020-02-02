@@ -30,6 +30,8 @@ fn parse_alphanumeric(s: &str) -> ParsedToken {
         "return" => Token::Return,
         "match" => Token::Match,
         "try" => Token::Try,
+        "and" => Token::And,
+        "or" => Token::Or,
         _ => Token::Ident(s.to_string()),
     })(s)
 }
@@ -51,8 +53,6 @@ fn parse_get_set(s: &str) -> ParsedToken {
 
 fn parse_operators(s: &str) -> ParsedToken {
     alt((
-        map(tag("&&"), |_| Token::AndAnd),
-        map(tag("||"), |_| Token::OrOr),
         map(tag("!="), |_| Token::NotEquals),
         map(tag("=="), |_| Token::EqualEquals),
         map(tag(">="), |_| Token::GreaterThanOrEqualTo),

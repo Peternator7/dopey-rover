@@ -4,6 +4,8 @@ use nom::multi::{many0, separated_nonempty_list};
 use nom::sequence::{terminated, tuple};
 use nom::IResult;
 
+use super::expression::parse_top_level_expression;
+use super::pattern::parse_assignable_pattern;
 use super::statement::{parse_assignment, parse_try_statement};
 use super::{extract_identifier, tag};
 use super::{Assignment, TryStatement};
@@ -27,7 +29,13 @@ pub enum TraitItem {
 pub fn parse_item(stream: &[Token]) -> ParsedItem {
     alt((
         parse_trait_declaration,
-        map(parse_assignment, Item::Assignment),
+        map(
+            terminated(
+                parse_assignment(parse_assignable_pattern, parse_top_level_expression),
+                tag(Token::SemiColon),
+            ),
+            Item::Assignment,
+        ),
         map(parse_try_statement, Item::TryStatement),
     ))(stream)
 }

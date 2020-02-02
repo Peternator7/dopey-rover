@@ -15,15 +15,18 @@ block_expression :=
     '{' top_level_expression '}'
 
 if_else_expression :=
-    'if' top_level_expression block_expression 'else' block_expression
+    'if' top_level_expression block_like_no_if_expression 'else' block_like_expression
+
+if_let_else_expression :=
+    'if' 'let'
 
 boolean_expression :=
-    test_expression '&&' boolean_expression
-    test_expression '||' boolean_expression
-    test_expression '&&' 'return' test_expression
-    test_expression '||' 'return' test_expression
-    test_expression '&&' 'return'
-    test_expression '||' 'return'
+    test_expression 'and' boolean_expression
+    test_expression 'or' boolean_expression
+    test_expression 'and' 'return' test_expression
+    test_expression 'or' 'return' test_expression
+    test_expression 'and' 'return'
+    test_expression 'or' 'return'
     test_expression
 
 test_expression :=

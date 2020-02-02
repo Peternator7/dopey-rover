@@ -7,14 +7,12 @@ True = {};
 False = {};
 
 DoubleYIfXIsPositive x y = {
-    if x >= 0 {
-        2 * y
-    } else {
-        y
-    }
+    MyValue = {
+        Test x = x + 1,
+        Arr = (Test 3) :: [a,b,c]
+    };
 };
-
-};"#;
+"#;
 
     if let Ok((_, toks)) = lexer::tokenize(program) {
         // println!("{:?}", toks);

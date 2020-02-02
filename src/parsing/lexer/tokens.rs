@@ -12,6 +12,8 @@ pub enum Token {
     Return,
     Match,
     Try,
+    And,
+    Or,
 
     Set,
     Get,
@@ -26,9 +28,6 @@ pub enum Token {
     Multiply,
     Divide,
     Modulus,
-
-    AndAnd,
-    OrOr,
 
     QuestionMark,
 

@@ -4,34 +4,21 @@ use nom::multi::separated_nonempty_list;
 use nom::sequence::{preceded, tuple};
 use nom::IResult;
 
-use super::{parse_top_level_expression, Expression, ObjectProperty, ParsedExpression};
+use super::{parse_top_level_expression, Expression, ParsedExpression};
 use crate::parsing::lexer::Token;
 use crate::parsing::parser::pattern::parse_object_creation_property_pattern;
-use crate::parsing::parser::{extract_identifier, tag, test};
+use crate::parsing::parser::{extract_identifier, tag, test, Assignment};
 
-pub fn parse_basic_expression(allow_new_object: bool) -> impl Fn(&[Token]) -> ParsedExpression {
-    move |stream| {
-        if allow_new_object {
-            alt((
-                parse_new_object,
-                parse_string_literal,
-                parse_number_literal,
-                parse_ident_expression,
-                parse_get_expression,
-                parse_parens_expression,
-                parse_array_expression,
-            ))(stream)
-        } else {
-            alt((
-                parse_string_literal,
-                parse_number_literal,
-                parse_ident_expression,
-                parse_get_expression,
-                parse_parens_expression,
-                parse_array_expression,
-            ))(stream)
-        }
-    }
+pub fn parse_basic_expression(stream: &[Token]) -> ParsedExpression {
+    alt((
+        parse_new_object,
+        parse_string_literal,
+        parse_number_literal,
+        parse_ident_expression,
+        parse_get_expression,
+        parse_parens_expression,
+        parse_array_expression,
+    ))(stream)
 }
 
 pub fn parse_ident_expression(stream: &[Token]) -> ParsedExpression {
@@ -99,16 +86,16 @@ pub fn parse_object_property_list(stream: &[Token]) -> ParsedExpression {
     .or_else(|_| Ok((stream, Expression::NewObject(Vec::new()))))
 }
 
-pub fn parse_object_property<'a>(stream: &'a [Token]) -> IResult<&'a [Token], ObjectProperty> {
+pub fn parse_object_property<'a>(stream: &'a [Token]) -> IResult<&'a [Token], Assignment> {
     map(
         tuple((
             parse_object_creation_property_pattern,
             tag(Token::Equals),
             parse_top_level_expression,
         )),
-        |(patt, _, expr)| ObjectProperty {
-            name: patt,
-            value: expr,
+        |(patt, _, expr)| Assignment {
+            lhs: patt,
+            rhs: expr,
         },
     )(stream)
 }

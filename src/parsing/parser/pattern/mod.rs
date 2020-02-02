@@ -109,7 +109,7 @@ pub fn parse_test_pattern(stream: &[Token]) -> ParsedPattern {
     map(
         tuple((
             tag(Token::QuestionMark),
-            parse_object_lookup_expression(false),
+            parse_object_lookup_expression,
             opt(parse_basic_pattern),
         )),
         |(_, parent, unpacked)| Pattern::TestPattern(parent, unpacked.map(Box::new)),

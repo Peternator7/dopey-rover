@@ -4,23 +4,16 @@ use dopey_rover::parsing::parser;
 fn main() {
     let program = r#"
 True = {};
-Some = {
-    Value = True,
-    Map a b = a + b,
+False = {};
+
+DoubleYIfXIsPositive x y = {
+    if x >= 0 {
+        2 * y
+    } else {
+        y
+    }
 };
 
-Functor = trait {
-    Map fn a,
-    Lift a
-};
-
-Options = ["Red", "Blue", "Yellow"];
-
-MyFunction a b = {
-    False = {};
-    Some = {};
-    None = {};
-    (1 + 1) :: "a" :: []
 };"#;
 
     if let Ok((_, toks)) = lexer::tokenize(program) {

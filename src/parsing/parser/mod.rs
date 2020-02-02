@@ -9,7 +9,28 @@ use nom::multi::many0;
 use nom::Err;
 use nom::IResult;
 
+use self::expression::Expression;
+use self::pattern::Pattern;
 use crate::parsing::lexer::Token;
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Assignment {
+    pub lhs: Pattern,
+    pub rhs: Expression,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct TryStatement(Expression);
+
+pub enum ImportStatement {
+    ModuleLevel {
+        path_segments: Vec<String>,
+    },
+    ItemLevel {
+        path_segments: Vec<String>,
+        items: Vec<String>,
+    },
+}
 
 const TAB_SIZE: usize = 4;
 

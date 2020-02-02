@@ -4,15 +4,17 @@ use nom::multi::{many0, separated_nonempty_list};
 use nom::sequence::{terminated, tuple};
 use nom::IResult;
 
-use super::statement::{parse_statement, Statement};
+use super::statement::{parse_assignment, parse_try_statement};
 use super::{extract_identifier, tag};
+use super::{Assignment, TryStatement};
 use crate::parsing::lexer::Token;
 
 pub type ParsedItem<'a> = IResult<&'a [Token], Item>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Item {
-    Statement(Statement),
+    Assignment(Assignment),
+    TryStatement(TryStatement),
     TraitDeclaration(String, Vec<TraitItem>),
 }
 
@@ -25,7 +27,8 @@ pub enum TraitItem {
 pub fn parse_item(stream: &[Token]) -> ParsedItem {
     alt((
         parse_trait_declaration,
-        map(parse_statement, Item::Statement),
+        map(parse_assignment, Item::Assignment),
+        map(parse_try_statement, Item::TryStatement),
     ))(stream)
 }
 

@@ -7,8 +7,8 @@ use nom::multi::{fold_many0, many0};
 use nom::sequence::{pair, preceded, tuple};
 use nom::IResult;
 
-use super::pattern::Pattern;
 use super::statement::{parse_statement, Statement};
+use super::Assignment;
 use super::{extract_identifier, tag};
 use crate::parsing::lexer::Token;
 
@@ -21,7 +21,7 @@ pub type ParsedExpression<'a> = IResult<&'a [Token], Expression>;
 pub enum Expression {
     Number(f32),
     StringLiteral(String),
-    NewObject(Vec<ObjectProperty>),
+    NewObject(Vec<Assignment>),
     NewTraitObject(Box<Expression>, usize),
     ConsArrayExpression(Box<Expression>, Box<Expression>),
     NilArrayExpression,
@@ -40,12 +40,6 @@ pub enum Expression {
     MatchExpression(Box<Expression>, Vec<()>),
     BlockExpression(Vec<Statement>, Option<Box<Expression>>),
     IfLetExpression,
-}
-
-#[derive(Clone, PartialEq, Debug)]
-pub struct ObjectProperty {
-    pub name: Pattern,
-    pub value: Expression,
 }
 
 impl Expression {
@@ -230,7 +224,7 @@ pub fn parse_call_lhs_expression(stream: &[Token]) -> ParsedExpression {
 }
 
 pub fn parse_head_expression(stream: &[Token]) -> ParsedExpression {
-    let (rem, init) = parse_object_lookup_expression(true)(stream)?;
+    let (rem, init) = parse_object_lookup_expression(stream)?;
     fold_many0(
         pair(tag(Token::DoubleColon), parse_head_expression),
         init,
@@ -238,17 +232,13 @@ pub fn parse_head_expression(stream: &[Token]) -> ParsedExpression {
     )(rem)
 }
 
-pub fn parse_object_lookup_expression(
-    allow_new_expressions: bool,
-) -> impl Fn(&[Token]) -> ParsedExpression {
-    move |stream| {
-        let (rem, init) = parse_basic_expression(allow_new_expressions)(stream)?;
-        fold_many0(
-            preceded(tag(Token::Period), extract_identifier),
-            init,
-            |acc, property| Expression::ObjectLookupExpression(Box::new(acc), property),
-        )(rem)
-    }
+pub fn parse_object_lookup_expression(stream: &[Token]) -> ParsedExpression {
+    let (rem, init) = parse_basic_expression(stream)?;
+    fold_many0(
+        preceded(tag(Token::Period), extract_identifier),
+        init,
+        |acc, property| Expression::ObjectLookupExpression(Box::new(acc), property),
+    )(rem)
 }
 
 pub fn parse_if_else_expression(stream: &[Token]) -> ParsedExpression {

@@ -20,7 +20,7 @@ pub fn parse_blocklike_expression(stream: TokenSlice) -> ParsedExpression {
             Parsed::new(
                 Expression::BlockExpression(stmts, expr.map(Box::new)),
                 start.start_pos,
-                end.end_pos,
+                Some(end.end_pos),
             )
         },
     )(stream)
@@ -38,7 +38,7 @@ pub fn parse_block_expression(stream: TokenSlice) -> ParsedExpression {
             Parsed::new(
                 Expression::BlockExpression(stmts, expr.map(Box::new)),
                 start.start_pos,
-                end.end_pos,
+                Some(end.end_pos),
             )
         },
     )(stream)

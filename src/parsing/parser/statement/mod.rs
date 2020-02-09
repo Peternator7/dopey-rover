@@ -48,7 +48,7 @@ pub fn parse_statement(stream: TokenSlice) -> ParsedStatement {
                 Parsed::new(
                     Statement::Assignment(assignment.data),
                     assignment.start_pos,
-                    end.end_pos,
+                    Some(end.end_pos),
                 )
             },
         ),
@@ -80,7 +80,9 @@ pub fn parse_try_statement(stream: TokenSlice) -> IResult<TokenSlice, Parsed<Try
             parse_top_level_expression,
             tag(TokenType::SemiColon),
         )),
-        |(start, expr, end)| Parsed::new(TryStatement(expr.data), start.start_pos, end.end_pos),
+        |(start, expr, end)| {
+            Parsed::new(TryStatement(expr.data), start.start_pos, Some(end.end_pos))
+        },
     )(stream)
 }
 
@@ -99,7 +101,7 @@ pub fn parse_set_statement(stream: TokenSlice) -> ParsedStatement {
             Parsed::new(
                 Statement::SetStatement(lhs, rhs),
                 start.start_pos,
-                end.end_pos,
+                Some(end.end_pos),
             )
         },
     )(stream)

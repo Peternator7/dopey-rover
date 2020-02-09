@@ -110,7 +110,7 @@ fn parse_boolean_expression(stream: TokenSlice) -> ParsedExpression {
                         let data = Some(Box::new(expr.data));
                         Rhs::Return(Parsed::new(data, start_pos, expr.end_pos))
                     } else {
-                        Rhs::Return(Parsed::new(None, start_pos, start.end_pos))
+                        Rhs::Return(Parsed::new(None, start_pos, Some(start.end_pos)))
                     }
                 },
             ),

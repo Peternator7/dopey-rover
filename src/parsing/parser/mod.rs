@@ -16,12 +16,12 @@ type TokenSlice<'a> = &'a [Token<'a>];
 #[derive(Debug, Clone)]
 pub struct Parsed<T> {
     pub start_pos: Position,
-    pub end_pos: Position,
+    pub end_pos: Option<Position>,
     pub data: T,
 }
 
 impl<T> Parsed<T> {
-    pub fn new(data: T, start_pos: Position, end_pos: Position) -> Parsed<T> {
+    pub fn new(data: T, start_pos: Position, end_pos: Option<Position>) -> Parsed<T> {
         Parsed {
             data,
             start_pos,

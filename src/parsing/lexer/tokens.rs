@@ -1,3 +1,10 @@
+use nom_locate::LocatedSpan;
+
+pub struct TokenFull<'a> {
+    pub position: LocatedSpan<&'a str>
+}
+
+
 #[derive(PartialEq, Debug, PartialOrd, Clone)]
 pub enum Token {
     Function,

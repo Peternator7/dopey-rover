@@ -18,6 +18,7 @@ pub enum Item {
     Assignment(Assignment),
     TryStatement(TryStatement),
     TraitDeclaration(String, Vec<TraitItem>),
+    ModuleImport,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]

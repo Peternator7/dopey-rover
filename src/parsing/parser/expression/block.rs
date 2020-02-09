@@ -1,8 +1,6 @@
-use nom::branch::alt;
 use nom::combinator::{map, opt, value};
 use nom::multi::{fold_many0, many0};
 use nom::sequence::{pair, preceded, tuple};
-use nom::IResult;
 
 use super::ParsedExpression;
 

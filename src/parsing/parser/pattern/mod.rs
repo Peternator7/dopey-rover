@@ -95,7 +95,7 @@ pub fn parse_string_literal_pattern(stream: &[Token]) -> ParsedPattern {
     })(stream)
 }
 
-pub fn parse_number_literal_pattern(stream: &[Token]) -> ParsedPattern {
+fn parse_number_literal_pattern(stream: &[Token]) -> ParsedPattern {
     map(test(Token::is_number), |tok| {
         if let Token::Number(f) = tok {
             Pattern::Number(*f)
@@ -105,7 +105,7 @@ pub fn parse_number_literal_pattern(stream: &[Token]) -> ParsedPattern {
     })(stream)
 }
 
-pub fn parse_test_pattern(stream: &[Token]) -> ParsedPattern {
+fn parse_test_pattern(stream: &[Token]) -> ParsedPattern {
     map(
         tuple((
             tag(Token::QuestionMark),
@@ -116,7 +116,7 @@ pub fn parse_test_pattern(stream: &[Token]) -> ParsedPattern {
     )(stream)
 }
 
-pub fn parse_ident_pattern(stream: &[Token]) -> ParsedPattern {
+fn parse_ident_pattern(stream: &[Token]) -> ParsedPattern {
     map(
         pair(extract_identifier, many0(extract_identifier)),
         |(ident, args)| {
@@ -129,7 +129,7 @@ pub fn parse_ident_pattern(stream: &[Token]) -> ParsedPattern {
     )(stream)
 }
 
-pub fn parse_object_property_pattern(stream: &[Token]) -> IResult<&[Token], PropertyPattern> {
+fn parse_object_property_pattern(stream: &[Token]) -> IResult<&[Token], PropertyPattern> {
     map(
         tuple((
             extract_identifier,
@@ -142,7 +142,7 @@ pub fn parse_object_property_pattern(stream: &[Token]) -> IResult<&[Token], Prop
     )(stream)
 }
 
-pub fn parse_object_pattern(stream: &[Token]) -> ParsedPattern {
+fn parse_object_pattern(stream: &[Token]) -> ParsedPattern {
     map(
         tuple((
             tag(Token::OpenBrace),
@@ -153,7 +153,7 @@ pub fn parse_object_pattern(stream: &[Token]) -> ParsedPattern {
     )(stream)
 }
 
-pub fn parse_array_pattern(stream: &[Token]) -> ParsedPattern {
+fn parse_array_pattern(stream: &[Token]) -> ParsedPattern {
     fn parse_array_pattern_inner(stream: &[Token]) -> ParsedPattern {
         use Pattern::*;
 

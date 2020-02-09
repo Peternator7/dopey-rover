@@ -5,7 +5,6 @@ pub mod statement;
 
 use nom::combinator::map;
 use nom::error::ErrorKind;
-use nom::multi::many0;
 use nom::Err;
 use nom::IResult;
 
@@ -42,7 +41,7 @@ fn tag<'a>(test: Token) -> impl Fn(&'a [Token]) -> IResult<&'a [Token], &'a Toke
     }
 }
 
-pub fn test<'a, F>(test: F) -> impl Fn(&'a [Token]) -> IResult<&'a [Token], &'a Token>
+fn test<'a, F>(test: F) -> impl Fn(&'a [Token]) -> IResult<&'a [Token], &'a Token>
 where
     F: Fn(&'a Token) -> bool,
 {
@@ -53,13 +52,9 @@ where
     }
 }
 
-pub fn extract_identifier(stream: &[Token]) -> IResult<&[Token], String> {
+fn extract_identifier(stream: &[Token]) -> IResult<&[Token], String> {
     map(test(Token::is_ident), |tok| match tok {
         Token::Ident(s) => s.clone(),
         _ => unreachable!(),
     })(stream)
-}
-
-pub fn parse_program(stream: &[Token]) -> IResult<&[Token], Vec<item::Item>> {
-    many0(item::parse_item)(stream)
 }

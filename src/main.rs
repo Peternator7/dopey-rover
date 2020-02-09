@@ -1,5 +1,4 @@
-use dopey_rover::parsing::lexer;
-use dopey_rover::parsing::parser;
+use dopey_rover::parsing;
 
 fn main() {
     let program = r#"
@@ -14,11 +13,8 @@ DoubleYIfXIsPositive x y = {
 };
 "#;
 
-    if let Ok((_, toks)) = lexer::tokenize(program) {
-        // println!("{:?}", toks);
-        println!(
-            "{:?}",
-            parser::parse_program(&*toks).unwrap().1 //parser::pattern::parse_top_level_pattern(&*toks)
-        );
-    }
+    println!(
+        "{:?}",
+        parsing::parse_module(program).unwrap() //parser::pattern::parse_top_level_pattern(&*toks)
+    );
 }

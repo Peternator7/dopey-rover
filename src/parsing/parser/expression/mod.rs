@@ -4,7 +4,7 @@ pub mod operators;
 
 use nom::branch::alt;
 use nom::combinator::{map, opt, value};
-use nom::multi::{fold_many0, many0};
+use nom::multi::fold_many0;
 use nom::sequence::{pair, preceded, tuple};
 use nom::IResult;
 
@@ -109,7 +109,7 @@ fn parse_boolean_expression(stream: &[Token]) -> ParsedExpression {
     Ok((remainder, output))
 }
 
-pub fn parse_test_expression(stream: &[Token]) -> ParsedExpression {
+fn parse_test_expression(stream: &[Token]) -> ParsedExpression {
     map(
         pair(
             parse_comparison_expression,
@@ -129,7 +129,7 @@ pub fn parse_test_expression(stream: &[Token]) -> ParsedExpression {
     )(stream)
 }
 
-pub fn parse_comparison_operator(stream: &[Token]) -> IResult<&[Token], BinaryOperator> {
+fn parse_comparison_operator(stream: &[Token]) -> IResult<&[Token], BinaryOperator> {
     alt((
         value(BinaryOperator::EqualTo, tag(Token::EqualEquals)),
         value(BinaryOperator::NotEqualTo, tag(Token::NotEquals)),
@@ -146,7 +146,7 @@ pub fn parse_comparison_operator(stream: &[Token]) -> IResult<&[Token], BinaryOp
     ))(stream)
 }
 
-pub fn parse_comparison_expression(stream: &[Token]) -> ParsedExpression {
+fn parse_comparison_expression(stream: &[Token]) -> ParsedExpression {
     map(
         pair(
             parse_addition_expression,
@@ -162,14 +162,14 @@ pub fn parse_comparison_expression(stream: &[Token]) -> ParsedExpression {
     )(stream)
 }
 
-pub fn parse_addition_operator(stream: &[Token]) -> IResult<&[Token], BinaryOperator> {
+fn parse_addition_operator(stream: &[Token]) -> IResult<&[Token], BinaryOperator> {
     alt((
         value(BinaryOperator::Add, tag(Token::Plus)),
         value(BinaryOperator::Sub, tag(Token::Minus)),
     ))(stream)
 }
 
-pub fn parse_addition_expression(stream: &[Token]) -> ParsedExpression {
+fn parse_addition_expression(stream: &[Token]) -> ParsedExpression {
     let (rem, init) = parse_multiplication_expression(stream)?;
     fold_many0(
         pair(parse_addition_operator, parse_multiplication_expression),
@@ -180,7 +180,7 @@ pub fn parse_addition_expression(stream: &[Token]) -> ParsedExpression {
     )(rem)
 }
 
-pub fn parse_multiplication_operator(stream: &[Token]) -> IResult<&[Token], BinaryOperator> {
+fn parse_multiplication_operator(stream: &[Token]) -> IResult<&[Token], BinaryOperator> {
     alt((
         value(BinaryOperator::Divide, tag(Token::Divide)),
         value(BinaryOperator::Mult, tag(Token::Multiply)),
@@ -188,7 +188,7 @@ pub fn parse_multiplication_operator(stream: &[Token]) -> IResult<&[Token], Bina
     ))(stream)
 }
 
-pub fn parse_multiplication_expression(stream: &[Token]) -> ParsedExpression {
+fn parse_multiplication_expression(stream: &[Token]) -> ParsedExpression {
     let (rem, init) = parse_arithmatic_factor(stream)?;
     fold_many0(
         pair(parse_multiplication_operator, parse_arithmatic_factor),
@@ -199,11 +199,11 @@ pub fn parse_multiplication_expression(stream: &[Token]) -> ParsedExpression {
     )(rem)
 }
 
-pub fn parse_arithmatic_factor(stream: &[Token]) -> ParsedExpression {
+fn parse_arithmatic_factor(stream: &[Token]) -> ParsedExpression {
     parse_call_expression(stream)
 }
 
-pub fn parse_call_expression(stream: &[Token]) -> ParsedExpression {
+fn parse_call_expression(stream: &[Token]) -> ParsedExpression {
     let (rem, init) = parse_call_lhs_expression(stream)?;
     fold_many0(parse_call_lhs_expression, init, |acc, arg| {
         Expression::BinaryExpression(Box::new(BinaryExpression::new(
@@ -214,11 +214,11 @@ pub fn parse_call_expression(stream: &[Token]) -> ParsedExpression {
     })(rem)
 }
 
-pub fn parse_call_lhs_expression(stream: &[Token]) -> ParsedExpression {
+fn parse_call_lhs_expression(stream: &[Token]) -> ParsedExpression {
     parse_head_expression(stream)
 }
 
-pub fn parse_head_expression(stream: &[Token]) -> ParsedExpression {
+fn parse_head_expression(stream: &[Token]) -> ParsedExpression {
     let (rem, init) = parse_object_lookup_expression(stream)?;
     fold_many0(
         pair(tag(Token::DoubleColon), parse_head_expression),

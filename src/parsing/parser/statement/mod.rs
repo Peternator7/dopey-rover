@@ -1,19 +1,19 @@
 use nom::branch::alt;
 use nom::combinator::map;
-use nom::sequence::{terminated, tuple};
+use nom::sequence::tuple;
 use nom::IResult;
 
 use super::pattern::{parse_assignable_pattern, Pattern};
-use super::{expression::Expression, tag, TokenSlice};
-use crate::parsing::lexer::{Token, TokenType};
+use super::{expression::Expression, tag, Parsed, TokenSlice};
+use crate::parsing::lexer::TokenType;
 use crate::parsing::parser::expression::parse_top_level_expression;
 
-pub type ParsedStatement<'a> = IResult<TokenSlice<'a>, Statement>;
+pub type ParsedStatement<'a> = IResult<TokenSlice<'a>, Parsed<Statement>>;
 
 #[derive(Clone, Debug)]
 pub struct Assignment {
-    pub lhs: Pattern,
-    pub rhs: Expression,
+    pub lhs: Parsed<Pattern>,
+    pub rhs: Parsed<Expression>,
 }
 
 #[derive(Clone, Debug)]
@@ -33,20 +33,28 @@ pub enum ImportStatement {
 pub enum Statement {
     Assignment(Assignment),
     TryStatement(TryStatement),
-    SetStatement(Expression, Expression),
+    SetStatement(Parsed<Expression>, Parsed<Expression>),
     ModuleImport,
 }
 
 pub fn parse_statement(stream: TokenSlice) -> ParsedStatement {
     alt((
         map(
-            terminated(
+            tuple((
                 parse_assignment(parse_assignable_pattern, parse_top_level_expression),
                 tag(TokenType::SemiColon),
-            ),
-            Statement::Assignment,
+            )),
+            |(assignment, end)| {
+                Parsed::new(
+                    Statement::Assignment(assignment.data),
+                    assignment.start_pos,
+                    end.end_pos,
+                )
+            },
         ),
-        map(parse_try_statement, Statement::TryStatement),
+        map(parse_try_statement, |stmt| {
+            stmt.map(Statement::TryStatement)
+        }),
         parse_set_statement,
     ))(stream)
 }
@@ -54,25 +62,25 @@ pub fn parse_statement(stream: TokenSlice) -> ParsedStatement {
 pub fn parse_assignment<'a, P, F>(
     pat_fn: P,
     expr_fn: F,
-) -> impl Fn(TokenSlice<'a>) -> IResult<TokenSlice<'a>, Assignment>
+) -> impl Fn(TokenSlice<'a>) -> IResult<TokenSlice<'a>, Parsed<Assignment>>
 where
-    P: Fn(TokenSlice) -> IResult<TokenSlice, Pattern>,
-    F: Fn(TokenSlice) -> IResult<TokenSlice, Expression>,
+    P: Fn(TokenSlice) -> IResult<TokenSlice, Parsed<Pattern>>,
+    F: Fn(TokenSlice) -> IResult<TokenSlice, Parsed<Expression>>,
 {
     map(
         tuple((pat_fn, tag(TokenType::Equals), expr_fn)),
-        |(lhs, _, rhs)| Assignment { lhs, rhs },
+        |(lhs, _, rhs)| Parsed::new(Assignment { lhs, rhs }, lhs.start_pos, rhs.end_pos),
     )
 }
 
-pub fn parse_try_statement(stream: TokenSlice) -> IResult<TokenSlice, TryStatement> {
+pub fn parse_try_statement(stream: TokenSlice) -> IResult<TokenSlice, Parsed<TryStatement>> {
     map(
         tuple((
             tag(TokenType::Try),
             parse_top_level_expression,
             tag(TokenType::SemiColon),
         )),
-        |(_, expr, _)| TryStatement(expr),
+        |(start, expr, end)| Parsed::new(TryStatement(expr.data), start.start_pos, end.end_pos),
     )(stream)
 }
 
@@ -87,6 +95,12 @@ pub fn parse_set_statement(stream: TokenSlice) -> ParsedStatement {
             tag(TokenType::CloseParen),
             tag(TokenType::SemiColon),
         )),
-        |(_, _, lhs, _, rhs, _, _)| Statement::SetStatement(lhs, rhs),
+        |(start, _, lhs, _, rhs, _, end)| {
+            Parsed::new(
+                Statement::SetStatement(lhs, rhs),
+                start.start_pos,
+                end.end_pos,
+            )
+        },
     )(stream)
 }

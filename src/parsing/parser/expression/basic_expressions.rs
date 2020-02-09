@@ -9,7 +9,9 @@ use super::{
 };
 use crate::parsing::lexer::{Token, TokenType};
 use crate::parsing::parser::pattern::parse_object_creation_property_pattern;
-use crate::parsing::parser::{extract_identifier, statement::Assignment, tag, test, TokenSlice};
+use crate::parsing::parser::{
+    extract_identifier, statement::Assignment, tag, test, Parsed, TokenSlice,
+};
 
 pub fn parse_basic_expression(stream: TokenSlice) -> ParsedExpression {
     alt((
@@ -24,19 +26,23 @@ pub fn parse_basic_expression(stream: TokenSlice) -> ParsedExpression {
 }
 
 fn parse_ident_expression(stream: TokenSlice) -> ParsedExpression {
-    map(extract_identifier, Expression::Variable)(stream)
+    map(extract_identifier, |ident| ident.map(Expression::Variable))(stream)
 }
 
 fn parse_string_literal(stream: TokenSlice) -> ParsedExpression {
     map(test(TokenType::is_string_literal), |tok| match tok.ty {
-        TokenType::StringLiteral(s) => Expression::StringLiteral(s.to_string()),
+        TokenType::StringLiteral(s) => Parsed::new(
+            Expression::StringLiteral(s.to_string()),
+            tok.start_pos,
+            tok.end_pos,
+        ),
         _ => unreachable!(),
     })(stream)
 }
 
 fn parse_number_literal(stream: TokenSlice) -> ParsedExpression {
     map(test(TokenType::is_number), |tok| match tok.ty {
-        TokenType::Number(f) => Expression::Number(f),
+        TokenType::Number(f) => Parsed::new(Expression::Number(f), tok.start_pos, tok.end_pos),
         _ => unreachable!(),
     })(stream)
 }
@@ -51,7 +57,13 @@ fn parse_get_expression(stream: TokenSlice) -> ParsedExpression {
             parse_top_level_expression,
             tag(TokenType::CloseParen),
         )),
-        |(_, _, ident, _, expr, _)| Expression::GetExpression(ident, Box::new(expr)),
+        |(start, _, ident, _, expr, end)| {
+            Parsed::new(
+                Expression::GetExpression(ident.data, Box::new(expr)),
+                start.start_pos,
+                end.end_pos,
+            )
+        },
     )(stream)
 }
 
@@ -62,7 +74,7 @@ fn parse_parens_expression(stream: TokenSlice) -> ParsedExpression {
             parse_top_level_expression,
             tag(TokenType::CloseParen),
         )),
-        |(_, expr, _)| expr,
+        |(start, expr, end)| Parsed::new(expr.data, start.start_pos, end.end_pos),
     )(stream)
 }
 
@@ -73,31 +85,37 @@ fn parse_new_object(stream: TokenSlice) -> ParsedExpression {
             parse_object_property_list,
             tag(TokenType::CloseBrace),
         )),
-        |(_, result, _)| result,
+        |(start, expr, end)| Parsed::new(Expression::NewObject(expr), start.start_pos, end.end_pos),
     )(stream)
 }
 
-fn parse_object_property_list(stream: TokenSlice) -> ParsedExpression {
+fn parse_object_property_list(stream: TokenSlice) -> IResult<TokenSlice, Vec<Parsed<Assignment>>> {
     map(
         tuple((
             separated_nonempty_list(tag(TokenType::Comma), parse_object_property),
             opt(tag(TokenType::Comma)),
         )),
-        |(props, _)| Expression::NewObject(props),
+        |(props, _)| props,
     )(stream)
-    .or_else(|_| Ok((stream, Expression::NewObject(Vec::<Assignment>::new()))))
+    .or_else(|_| Ok((stream, Vec::new())))
 }
 
-fn parse_object_property(stream: TokenSlice) -> IResult<TokenSlice, Assignment> {
+fn parse_object_property(stream: TokenSlice) -> IResult<TokenSlice, Parsed<Assignment>> {
     map(
         tuple((
             parse_object_creation_property_pattern,
             tag(TokenType::Equals),
             parse_top_level_expression,
         )),
-        |(patt, _, expr)| Assignment {
-            lhs: patt,
-            rhs: expr,
+        |(patt, _, expr)| {
+            Parsed::new(
+                Assignment {
+                    lhs: patt.data,
+                    rhs: expr.data,
+                },
+                patt.start_pos,
+                expr.end_pos,
+            )
         },
     )(stream)
 }
@@ -138,6 +156,6 @@ fn parse_array_expression(stream: TokenSlice) -> ParsedExpression {
             parse_array_expression_inner,
             tag(TokenType::CloseBracket),
         )),
-        |(_, elements, _)| elements,
+        |(start, elements, end)| elements,
     )(stream)
 }

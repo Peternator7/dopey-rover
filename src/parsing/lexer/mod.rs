@@ -8,8 +8,6 @@ use nom::IResult;
 
 use nom_locate::LocatedSpan;
 
-use crate::parsing::Position;
-
 type ParsedToken<'a> = IResult<LocatedSpan<&'a str>, Token<'a>>;
 
 pub mod tokens;
@@ -58,7 +56,14 @@ fn parse_string(s: LocatedSpan<&str>) -> ParsedToken {
     let (s, text) = recognize(take_while(|c| c != '"'))(s)?;
     let (s, _) = tag("\"")(s)?;
     let (s, end_pos) = nom_locate::position(s)?;
-    Ok((s, Token::new(start_pos.into(), end_pos.into(), TokenType::StringLiteral(text.fragment))))
+    Ok((
+        s,
+        Token::new(
+            start_pos.into(),
+            end_pos.into(),
+            TokenType::StringLiteral(text.fragment),
+        ),
+    ))
 }
 
 fn parse_get_set(s: LocatedSpan<&str>) -> ParsedToken {

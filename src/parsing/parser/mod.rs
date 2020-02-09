@@ -13,26 +13,30 @@ use super::Position;
 
 type TokenSlice<'a> = &'a [Token<'a>];
 
+#[derive(Debug, Clone)]
 pub struct Parsed<T> {
     pub start_pos: Position,
-    pub end_pos: Option<Position>,
+    pub end_pos: Position,
     pub data: T,
 }
 
 impl<T> Parsed<T> {
-    pub fn new(data: T, start_pos: Position) -> Parsed<T> {
+    pub fn new(data: T, start_pos: Position, end_pos: Position) -> Parsed<T> {
         Parsed {
             data,
             start_pos,
-            end_pos: None,
+            end_pos,
         }
     }
 
-    pub fn with_end(data: T, start_pos: Position, end_pos: Position) -> Parsed<T> {
+    pub fn map<F, U>(self, mapping: F) -> Parsed<U>
+    where
+        F: FnOnce(T) -> U,
+    {
         Parsed {
-            data,
-            start_pos,
-            end_pos: Some(end_pos),
+            start_pos: self.start_pos,
+            end_pos: self.end_pos,
+            data: mapping(self.data),
         }
     }
 }
@@ -55,9 +59,9 @@ where
     }
 }
 
-fn extract_identifier<'a>(stream: &'a [Token<'a>]) -> IResult<&'a [Token<'a>], String> {
+fn extract_identifier<'a>(stream: &'a [Token<'a>]) -> IResult<&'a [Token<'a>], Parsed<String>> {
     map(test(TokenType::is_ident), |tok| match tok.ty {
-        TokenType::Ident(s) => s.to_string(),
+        TokenType::Ident(s) => Parsed::new(s.to_string(), tok.start_pos, tok.end_pos),
         _ => unreachable!(),
     })(stream)
 }

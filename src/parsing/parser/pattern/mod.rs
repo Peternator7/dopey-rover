@@ -4,12 +4,12 @@ use nom::multi::{fold_many0, many0, separated_list};
 use nom::sequence::{pair, preceded, tuple};
 use nom::IResult;
 
-use super::{extract_identifier, tag, test, TokenSlice};
-use crate::parsing::lexer::{Token, TokenType};
+use super::{extract_identifier, tag, test, Parsed, TokenSlice};
+use crate::parsing::lexer::TokenType;
 use crate::parsing::parser::expression::parse_object_lookup_expression;
 use crate::parsing::parser::expression::Expression;
 
-pub type ParsedPattern<'a> = IResult<TokenSlice<'a>, Pattern>;
+pub type ParsedPattern<'a> = IResult<TokenSlice<'a>, Parsed<Pattern>>;
 
 #[derive(Clone, Debug)]
 pub enum Pattern {
@@ -18,9 +18,9 @@ pub enum Pattern {
     Identifier(String),
     Function(String, Vec<String>),
     ObjectDestructuring(Vec<PropertyPattern>),
-    ConsPattern(Box<Pattern>, Box<Pattern>),
+    ConsPattern(Box<Parsed<Pattern>>, Box<Parsed<Pattern>>),
     NilArrayPattern,
-    TestPattern(Expression, Option<Box<Pattern>>),
+    TestPattern(Parsed<Expression>, Option<Box<Parsed<Pattern>>>),
 }
 
 impl Pattern {
@@ -29,8 +29,10 @@ impl Pattern {
             Pattern::Identifier(_) => true,
             Pattern::Function(_, _) => true,
             Pattern::ObjectDestructuring(props) => !props.is_empty(),
-            Pattern::ConsPattern(head, tail) => head.is_assignable() || tail.is_assignable(),
-            Pattern::TestPattern(_, Some(pat)) => pat.is_assignable(),
+            Pattern::ConsPattern(head, tail) => {
+                head.data.is_assignable() || tail.data.is_assignable()
+            }
+            Pattern::TestPattern(_, Some(pat)) => pat.data.is_assignable(),
             _ => false,
         }
     }
@@ -51,11 +53,13 @@ pub enum PropertyPattern {
 }
 
 pub fn parse_assignable_pattern(stream: TokenSlice) -> ParsedPattern {
-    verify(parse_top_level_pattern, Pattern::is_assignable)(stream)
+    verify(parse_top_level_pattern, |p| p.data.is_assignable())(stream)
 }
 
 pub fn parse_object_creation_property_pattern(stream: TokenSlice) -> ParsedPattern {
-    verify(parse_top_level_pattern, Pattern::is_valid_object_property)(stream)
+    verify(parse_top_level_pattern, |p| {
+        p.data.is_valid_object_property()
+    })(stream)
 }
 
 pub fn parse_top_level_pattern(stream: TokenSlice) -> ParsedPattern {
@@ -67,7 +71,13 @@ pub fn parse_head_pattern(stream: TokenSlice) -> ParsedPattern {
     fold_many0(
         pair(tag(TokenType::DoubleColon), parse_head_pattern),
         init,
-        |acc, (_, rhs)| Pattern::ConsPattern(Box::new(acc), Box::new(rhs)),
+        |acc, (_, rhs)| {
+            Parsed::new(
+                Pattern::ConsPattern(Box::new(acc), Box::new(rhs)),
+                acc.start_pos,
+                rhs.end_pos,
+            )
+        },
     )(rem)
 }
 
@@ -88,7 +98,11 @@ pub fn parse_basic_pattern(stream: TokenSlice) -> ParsedPattern {
 pub fn parse_string_literal_pattern(stream: TokenSlice) -> ParsedPattern {
     map(test(TokenType::is_string_literal), |tok| {
         if let TokenType::StringLiteral(s) = tok.ty {
-            Pattern::StringLiteral(s.to_string())
+            Parsed::new(
+                Pattern::StringLiteral(s.to_string()),
+                tok.start_pos,
+                tok.end_pos,
+            )
         } else {
             unreachable!()
         }
@@ -98,7 +112,7 @@ pub fn parse_string_literal_pattern(stream: TokenSlice) -> ParsedPattern {
 fn parse_number_literal_pattern(stream: TokenSlice) -> ParsedPattern {
     map(test(TokenType::is_number), |tok| {
         if let TokenType::Number(f) = tok.ty {
-            Pattern::Number(f)
+            Parsed::new(Pattern::Number(f), tok.start_pos, tok.end_pos)
         } else {
             unreachable!()
         }
@@ -112,7 +126,13 @@ fn parse_test_pattern(stream: TokenSlice) -> ParsedPattern {
             parse_object_lookup_expression,
             opt(parse_basic_pattern),
         )),
-        |(_, parent, unpacked)| Pattern::TestPattern(parent, unpacked.map(Box::new)),
+        |(start, parent, unpacked)| {
+            Parsed::new(
+                Pattern::TestPattern(parent, unpacked.map(Box::new)),
+                start.start_pos,
+                unpacked.map(|patt| patt.end_pos).unwrap_or(parent.end_pos),
+            )
+        },
     )(stream)
 }
 
@@ -129,7 +149,9 @@ fn parse_ident_pattern(stream: TokenSlice) -> ParsedPattern {
     )(stream)
 }
 
-fn parse_object_property_pattern(stream: TokenSlice) -> IResult<TokenSlice, PropertyPattern> {
+fn parse_object_property_pattern(
+    stream: TokenSlice,
+) -> IResult<TokenSlice, Parsed<PropertyPattern>> {
     map(
         tuple((
             extract_identifier,

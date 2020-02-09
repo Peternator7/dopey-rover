@@ -6,44 +6,53 @@ use nom::multi::many0;
 use nom::sequence::{pair, preceded, terminated, tuple};
 use nom::IResult;
 
-type ParsedToken<'a> = IResult<&'a str, Token>;
+use nom_locate::LocatedSpan;
+
+type ParsedToken<'a> = IResult<LocatedSpan<&'a str>, Token<'a>>;
 
 pub mod tokens;
 
-pub use tokens::Token;
+pub use tokens::{Token, TokenType};
 
-fn parse_float(s: &str) -> ParsedToken {
-    map(nom::number::complete::float, Token::Number)(s)
+fn parse_float(s: LocatedSpan<&str>) -> ParsedToken {
+    let (s, pos) = nom_locate::position(s)?;
+    let (s, f) = nom::number::complete::float(s)?;
+    Ok((s, Token::new(pos, TokenType::Number(f))))
 }
 
-fn parse_alphanumeric(s: &str) -> ParsedToken {
-    map(recognize(pair(alpha1, alphanumeric0)), |s| match s {
-        "function" => Token::Function,
-        "trait" => Token::Trait,
-        "if" => Token::If,
-        "else" => Token::Else,
-        "import" => Token::Import,
-        "from" => Token::From,
-        "with" => Token::With,
-        "new" => Token::New,
-        "is" => Token::Is,
-        "return" => Token::Return,
-        "match" => Token::Match,
-        "try" => Token::Try,
-        "and" => Token::And,
-        "or" => Token::Or,
-        _ => Token::Ident(s.to_string()),
-    })(s)
+fn parse_alphanumeric(s: LocatedSpan<&str>) -> ParsedToken {
+    let (s, pos) = nom_locate::position(s)?;
+    let (s, text) = recognize(pair(alpha1, alphanumeric0))(s)?;
+    let output = match text.fragment {
+        "function" => Token::new(pos, TokenType::Function),
+        "trait" => Token::new(pos, TokenType::Trait),
+        "if" => Token::new(pos, TokenType::If),
+        "else" => Token::new(pos, TokenType::Else),
+        "import" => Token::new(pos, TokenType::Import),
+        "from" => Token::new(pos, TokenType::From),
+        "with" => Token::new(pos, TokenType::With),
+        "new" => Token::new(pos, TokenType::New),
+        "is" => Token::new(pos, TokenType::Is),
+        "return" => Token::new(pos, TokenType::Return),
+        "match" => Token::new(pos, TokenType::Match),
+        "try" => Token::new(pos, TokenType::Try),
+        "and" => Token::new(pos, TokenType::And),
+        "or" => Token::new(pos, TokenType::Or),
+        _ => Token::new(pos, TokenType::Ident(text.fragment)),
+    };
+
+    Ok((s, output))
 }
 
-fn parse_string(s: &str) -> ParsedToken {
-    map(
-        tuple((tag("\""), recognize(take_while(|c| c != '"')), tag("\""))),
-        |(_, s, _): (&str, &str, &str)| Token::StringLiteral(s.to_string()),
-    )(s)
+fn parse_string(s: LocatedSpan<&str>) -> ParsedToken {
+    let (s, pos) = nom_locate::position(s)?;
+    let (s, _) = tag("\"")(s)?;
+    let (s, text) = recognize(take_while(|c| c != '"'))(s)?;
+    let (s, _) = tag("\"")(s)?;
+    Ok((s, Token::new(pos, TokenType::StringLiteral(text.fragment))))
 }
 
-fn parse_get_set(s: &str) -> ParsedToken {
+fn parse_get_set(s: LocatedSpan<&str>) -> ParsedToken {
     map_res(recognize(pair(tag("@"), alphanumeric0)), |s| match s {
         "@get" => Ok(Token::Get),
         "@set" => Ok(Token::Set),
@@ -51,57 +60,63 @@ fn parse_get_set(s: &str) -> ParsedToken {
     })(s)
 }
 
-fn parse_operators(s: &str) -> ParsedToken {
-    alt((
-        map(tag("!="), |_| Token::NotEquals),
-        map(tag("=="), |_| Token::EqualEquals),
-        map(tag(">="), |_| Token::GreaterThanOrEqualTo),
-        map(tag("<="), |_| Token::LessThanOrEqualTo),
-        map(tag(">"), |_| Token::GreaterThan),
-        map(tag("<"), |_| Token::LessThan),
-        map(tag("+"), |_| Token::Plus),
-        map(tag("-"), |_| Token::Minus),
-        map(tag("/"), |_| Token::Divide),
-        map(tag("*"), |_| Token::Multiply),
-        map(tag("%"), |_| Token::Modulus),
-    ))(s)
+fn parse_operators(s: LocatedSpan<&str>) -> ParsedToken {
+    let (s, pos) = nom_locate::position(s)?;
+    let (s, tok) = alt((
+        map(tag("!="), move |_| TokenType::NotEquals),
+        map(tag("=="), move |_| TokenType::EqualEquals),
+        map(tag(">="), move |_| TokenType::GreaterThanOrEqualTo),
+        map(tag("<="), move |_| TokenType::LessThanOrEqualTo),
+        map(tag(">"), move |_| TokenType::GreaterThan),
+        map(tag("<"), move |_| TokenType::LessThan),
+        map(tag("+"), move |_| TokenType::Plus),
+        map(tag("-"), move |_| TokenType::Minus),
+        map(tag("/"), move |_| TokenType::Divide),
+        map(tag("*"), move |_| TokenType::Multiply),
+        map(tag("%"), move |_| TokenType::Modulus),
+    ))(s)?;
+
+    Ok((s, Token::new(pos, tok)))
 }
 
-fn parse_symbol(s: &str) -> ParsedToken {
-    alt((
-        parse_operators,
-        map(tag("?"), |_| Token::QuestionMark),
-        map(tag("("), |_| Token::OpenParen),
-        map(tag(")"), |_| Token::CloseParen),
-        map(tag("{"), |_| Token::OpenBrace),
-        map(tag("}"), |_| Token::CloseBrace),
-        map(tag("["), |_| Token::OpenBracket),
-        map(tag("]"), |_| Token::CloseBracket),
-        map(tag("::"), |_| Token::DoubleColon),
-        map(tag(":"), |_| Token::Colon),
-        map(tag(";"), |_| Token::SemiColon),
-        map(tag("."), |_| Token::Period),
-        map(tag(","), |_| Token::Comma),
-        map(tag("!"), |_| Token::Exclamation),
-        map(tag("="), |_| Token::Equals),
-        map(tag("|"), |_| Token::Pipe),
-    ))(s)
+fn parse_symbol(s: LocatedSpan<&str>) -> ParsedToken {
+    let (s, pos) = nom_locate::position(s)?;
+    let (s, tok) = alt((
+        map(tag("?"), |_| TokenType::QuestionMark),
+        map(tag("("), |_| TokenType::OpenParen),
+        map(tag(")"), |_| TokenType::CloseParen),
+        map(tag("{"), |_| TokenType::OpenBrace),
+        map(tag("}"), |_| TokenType::CloseBrace),
+        map(tag("["), |_| TokenType::OpenBracket),
+        map(tag("]"), |_| TokenType::CloseBracket),
+        map(tag("::"), |_| TokenType::DoubleColon),
+        map(tag(":"), |_| TokenType::Colon),
+        map(tag(";"), |_| TokenType::SemiColon),
+        map(tag("."), |_| TokenType::Period),
+        map(tag(","), |_| TokenType::Comma),
+        map(tag("!"), |_| TokenType::Exclamation),
+        map(tag("="), |_| TokenType::Equals),
+        map(tag("|"), |_| TokenType::Pipe),
+    ))(s)?;
+
+    Ok((s, Token::new(pos, tok)))
 }
 
 /// Parse 1 or more whitespace characters. We would likely only ever parse this on the
 /// very first token
-fn parse_whitespace(s: &str) -> ParsedToken {
-    map(space1, |output: &str| Token::Indented(output.len()))(s)
-}
+// fn parse_whitespace(s: &str) -> ParsedToken {
+//     map(space1, |output: &str| Token::Indented(output.len()))(s)
+// }
 
-fn parse_newline(s: &str) -> ParsedToken {
-    map(preceded(line_ending, space0), |ws: &str| {
-        Token::Indented(ws.len())
-    })(s)
-}
+// fn parse_newline(s: &str) -> ParsedToken {
+//     map(preceded(line_ending, space0), |ws: &str| {
+//         Token::Indented(ws.len())
+//     })(s)
+// }
 
-fn parse_token(s: &str) -> ParsedToken {
+fn parse_token(s: LocatedSpan<&str>) -> ParsedToken {
     alt((
+        parse_operators,
         parse_symbol,
         parse_float,
         parse_alphanumeric,

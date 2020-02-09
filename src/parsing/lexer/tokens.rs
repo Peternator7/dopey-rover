@@ -1,12 +1,19 @@
 use nom_locate::LocatedSpan;
 
-pub struct TokenFull<'a> {
-    pub position: LocatedSpan<&'a str>
+#[derive(PartialEq, Debug, Clone)]
+pub struct Token<'a> {
+    pub pos: LocatedSpan<&'a str>,
+    pub ty: TokenType<'a>,
 }
 
+impl<'a> Token<'a> {
+    pub fn new<'b>(pos: LocatedSpan<&'b str>, ty: TokenType<'b>) -> Token<'b> {
+        Token { pos, ty }
+    }
+}
 
-#[derive(PartialEq, Debug, PartialOrd, Clone)]
-pub enum Token {
+#[derive(PartialEq, Debug, Clone)]
+pub enum TokenType<'a> {
     Function,
     Trait,
     If,
@@ -25,10 +32,10 @@ pub enum Token {
     Set,
     Get,
 
-    Ident(String),
+    Ident(&'a str),
     Number(f32),
-    StringLiteral(String),
-    Indented(usize),
+    StringLiteral(&'a str),
+    // Indented(usize),
 
     Plus,
     Minus,
@@ -74,9 +81,9 @@ macro_rules! generate_is_a_ {
     };
 }
 
-impl Token {
-    generate_is_a_!(is_indented, Token::Indented(_));
-    generate_is_a_!(is_ident, Token::Ident(_));
-    generate_is_a_!(is_number, Token::Number(_));
-    generate_is_a_!(is_string_literal, Token::StringLiteral(_));
+impl<'a> TokenType<'a> {
+    generate_is_a_!(is_indented, TokenType::Indented(_));
+    generate_is_a_!(is_ident, TokenType::Ident(_));
+    generate_is_a_!(is_number, TokenType::Number(_));
+    generate_is_a_!(is_string_literal, TokenType::StringLiteral(_));
 }

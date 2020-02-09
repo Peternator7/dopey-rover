@@ -8,21 +8,29 @@ use nom::IResult;
 
 use nom_locate::LocatedSpan;
 
+use crate::parsing::Position;
+
 type ParsedToken<'a> = IResult<LocatedSpan<&'a str>, Token<'a>>;
 
 pub mod tokens;
-
 pub use tokens::{Token, TokenType};
 
+use std::convert::Into;
+
 fn parse_float(s: LocatedSpan<&str>) -> ParsedToken {
-    let (s, pos) = nom_locate::position(s)?;
+    let (s, start_pos) = nom_locate::position(s)?;
     let (s, f) = nom::number::complete::float(s)?;
-    Ok((s, Token::new(pos, TokenType::Number(f))))
+    let (s, end_pos) = nom_locate::position(s)?;
+    Ok((
+        s,
+        Token::new(start_pos.into(), end_pos.into(), TokenType::Number(f)),
+    ))
 }
 
 fn parse_alphanumeric(s: LocatedSpan<&str>) -> ParsedToken {
-    let (s, pos) = nom_locate::position(s)?;
+    let (s, start_pos) = nom_locate::position(s)?;
     let (s, text) = recognize(pair(alpha1, alphanumeric0))(s)?;
+    let (s, end_pos) = nom_locate::position(s)?;
     let tt = match text.fragment {
         "function" => TokenType::Function,
         "trait" => TokenType::Trait,
@@ -41,30 +49,32 @@ fn parse_alphanumeric(s: LocatedSpan<&str>) -> ParsedToken {
         _ => TokenType::Ident(text.fragment),
     };
 
-    Ok((s, Token::new(pos, tt)))
+    Ok((s, Token::new(start_pos.into(), end_pos.into(), tt)))
 }
 
 fn parse_string(s: LocatedSpan<&str>) -> ParsedToken {
-    let (s, pos) = nom_locate::position(s)?;
+    let (s, start_pos) = nom_locate::position(s)?;
     let (s, _) = tag("\"")(s)?;
     let (s, text) = recognize(take_while(|c| c != '"'))(s)?;
     let (s, _) = tag("\"")(s)?;
-    Ok((s, Token::new(pos, TokenType::StringLiteral(text.fragment))))
+    let (s, end_pos) = nom_locate::position(s)?;
+    Ok((s, Token::new(start_pos.into(), end_pos.into(), TokenType::StringLiteral(text.fragment))))
 }
 
 fn parse_get_set(s: LocatedSpan<&str>) -> ParsedToken {
-    let (s, pos) = nom_locate::position(s)?;
+    let (s, start_pos) = nom_locate::position(s)?;
     let (s, _) = tag("@")(s)?;
     let (s, tok) = alt((
         value(TokenType::Get, tag("get")),
         value(TokenType::Set, tag("set")),
     ))(s)?;
     let (s, _) = not(alphanumeric1)(s)?;
-    Ok((s, Token::new(pos, tok)))
+    let (s, end_pos) = nom_locate::position(s)?;
+    Ok((s, Token::new(start_pos.into(), end_pos.into(), tok)))
 }
 
 fn parse_operators(s: LocatedSpan<&str>) -> ParsedToken {
-    let (s, pos) = nom_locate::position(s)?;
+    let (s, start_pos) = nom_locate::position(s)?;
     let (s, tok) = alt((
         map(tag("!="), move |_| TokenType::NotEquals),
         map(tag("=="), move |_| TokenType::EqualEquals),
@@ -79,11 +89,12 @@ fn parse_operators(s: LocatedSpan<&str>) -> ParsedToken {
         map(tag("%"), move |_| TokenType::Modulus),
     ))(s)?;
 
-    Ok((s, Token::new(pos, tok)))
+    let (s, end_pos) = nom_locate::position(s)?;
+    Ok((s, Token::new(start_pos.into(), end_pos.into(), tok)))
 }
 
 fn parse_symbol(s: LocatedSpan<&str>) -> ParsedToken {
-    let (s, pos) = nom_locate::position(s)?;
+    let (s, start_pos) = nom_locate::position(s)?;
     let (s, tok) = alt((
         map(tag("?"), |_| TokenType::QuestionMark),
         map(tag("("), |_| TokenType::OpenParen),
@@ -102,7 +113,8 @@ fn parse_symbol(s: LocatedSpan<&str>) -> ParsedToken {
         map(tag("|"), |_| TokenType::Pipe),
     ))(s)?;
 
-    Ok((s, Token::new(pos, tok)))
+    let (s, end_pos) = nom_locate::position(s)?;
+    Ok((s, Token::new(start_pos.into(), end_pos.into(), tok)))
 }
 
 /// Parse 1 or more whitespace characters. We would likely only ever parse this on the

@@ -1,14 +1,19 @@
-use nom_locate::LocatedSpan;
+use crate::parsing::Position;
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Token<'a> {
-    pub pos: LocatedSpan<&'a str>,
+    pub start_pos: Position,
+    pub end_pos: Position,
     pub ty: TokenType<'a>,
 }
 
 impl<'a> Token<'a> {
-    pub fn new<'b>(pos: LocatedSpan<&'b str>, ty: TokenType<'b>) -> Token<'b> {
-        Token { pos, ty }
+    pub fn new<'b>(start_pos: Position, end_pos: Position, ty: TokenType<'b>) -> Token<'b> {
+        Token {
+            start_pos,
+            end_pos,
+            ty,
+        }
     }
 }
 

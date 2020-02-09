@@ -6,7 +6,7 @@ use super::ParsedExpression;
 
 use super::super::{statement::parse_statement, tag, TokenSlice};
 use super::{parse_boolean_expression, parse_top_level_expression, Expression};
-use crate::parsing::lexer::{TokenType};
+use crate::parsing::lexer::TokenType;
 
 pub fn parse_blocklike_expression(stream: TokenSlice) -> ParsedExpression {
     map(

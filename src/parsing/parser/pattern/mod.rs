@@ -11,7 +11,7 @@ use crate::parsing::parser::expression::Expression;
 
 pub type ParsedPattern<'a> = IResult<TokenSlice<'a>, Pattern>;
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, Debug)]
 pub enum Pattern {
     Number(f32),
     StringLiteral(String),
@@ -44,7 +44,7 @@ impl Pattern {
     }
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, Debug)]
 pub enum PropertyPattern {
     Existance(String),
     Test(String, Box<Pattern>),

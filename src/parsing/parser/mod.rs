@@ -8,34 +8,22 @@ use nom::error::ErrorKind;
 use nom::Err;
 use nom::IResult;
 
-use self::expression::Expression;
-use self::pattern::Pattern;
 use crate::parsing::lexer::{Token, TokenType};
 
 type TokenSlice<'a> = &'a [Token<'a>];
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct Assignment {
-    pub lhs: Pattern,
-    pub rhs: Expression,
+pub struct Position {
+    pub line: usize,
+    pub column: usize,
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct TryStatement(Expression);
-
-pub enum ImportStatement {
-    ModuleLevel {
-        path_segments: Vec<String>,
-    },
-    ItemLevel {
-        path_segments: Vec<String>,
-        items: Vec<String>,
-    },
+pub struct Parsed<T> {
+    pub start_pos: Position,
+    pub end_pos: Position,
+    pub data: T,
 }
 
-const TAB_SIZE: usize = 4;
-
-fn tag<'a>(test: TokenType<'a>) -> impl Fn(TokenSlice) -> IResult<TokenSlice, &'a Token> {
+fn tag(test: TokenType<'static>) -> impl Fn(TokenSlice) -> IResult<TokenSlice, &Token> {
     move |stream| {
         if let Some((a, rem)) = stream.split_first() {
             if test == a.ty {
@@ -43,14 +31,13 @@ fn tag<'a>(test: TokenType<'a>) -> impl Fn(TokenSlice) -> IResult<TokenSlice, &'
             } else {
                 Result::Err(Err::Error((stream, ErrorKind::Tag)))
             }
-        }
-        else {
+        } else {
             Result::Err(Err::Error((stream, ErrorKind::Tag)))
         }
     }
 }
 
-fn test<'a, F>(test: F) -> impl Fn(&'a [Token]) -> IResult<&'a [Token<'a>], &'a Token<'a>>
+fn test<'a, F>(test: F) -> impl Fn(TokenSlice<'a>) -> IResult<TokenSlice<'a>, &'a Token<'a>>
 where
     F: Fn(&'a TokenType<'a>) -> bool,
 {

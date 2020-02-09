@@ -9,7 +9,7 @@ use super::{
 };
 use crate::parsing::lexer::{Token, TokenType};
 use crate::parsing::parser::pattern::parse_object_creation_property_pattern;
-use crate::parsing::parser::{extract_identifier, tag, test, Assignment, TokenSlice};
+use crate::parsing::parser::{extract_identifier, statement::Assignment, tag, test, TokenSlice};
 
 pub fn parse_basic_expression(stream: TokenSlice) -> ParsedExpression {
     alt((
@@ -85,7 +85,7 @@ fn parse_object_property_list(stream: TokenSlice) -> ParsedExpression {
         )),
         |(props, _)| Expression::NewObject(props),
     )(stream)
-    .or_else(|_| Ok((stream, Expression::NewObject(Vec::new()))))
+    .or_else(|_| Ok((stream, Expression::NewObject(Vec::<Assignment>::new()))))
 }
 
 fn parse_object_property(stream: TokenSlice) -> IResult<TokenSlice, Assignment> {

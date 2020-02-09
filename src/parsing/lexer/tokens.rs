@@ -71,7 +71,7 @@ pub enum TokenType<'a> {
 
 macro_rules! generate_is_a_ {
     ($name:tt, $variant:pat) => {
-        pub fn $name<'b>(&'b self) -> bool {
+        pub fn $name(&self) -> bool {
             match self {
                 $variant => true,
                 _ => false

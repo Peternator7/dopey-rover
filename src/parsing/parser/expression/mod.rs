@@ -8,17 +8,22 @@ use nom::multi::fold_many0;
 use nom::sequence::{pair, preceded, tuple};
 use nom::IResult;
 
-use super::statement::{parse_statement, Statement};
-use super::Assignment;
-use super::{extract_identifier, tag, TokenSlice};
+use super::{
+    extract_identifier,
+    statement::{Assignment, Statement},
+    tag, TokenSlice,
+};
+
 use crate::parsing::lexer::{Token, TokenType};
+
+pub use super::Parsed;
 
 use self::basic_expressions::parse_basic_expression;
 use self::operators::*;
 
 pub type ParsedExpression<'a> = IResult<TokenSlice<'a>, Expression>;
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, Debug)]
 pub enum Expression {
     Number(f32),
     StringLiteral(String),
@@ -35,7 +40,7 @@ pub enum Expression {
     IfLetExpression,
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, Debug)]
 pub struct BinaryExpression {
     pub op: BinaryOperator,
     pub lhs: Expression,

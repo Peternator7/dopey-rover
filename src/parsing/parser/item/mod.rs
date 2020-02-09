@@ -7,13 +7,13 @@ use nom::IResult;
 use super::expression::parse_top_level_expression;
 use super::pattern::parse_assignable_pattern;
 use super::statement::{parse_assignment, parse_try_statement};
+use super::statement::{Assignment, TryStatement};
 use super::{extract_identifier, tag, TokenSlice};
-use super::{Assignment, TryStatement};
 use crate::parsing::lexer::{Token, TokenType};
 
 pub type ParsedItem<'a> = IResult<TokenSlice<'a>, Item>;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum Item {
     Assignment(Assignment),
     TryStatement(TryStatement),
@@ -27,7 +27,7 @@ pub enum TraitItem {
     Function { name: String, args: usize },
 }
 
-pub fn parse_item<'a>(stream: TokenSlice<'a>) -> ParsedItem<'a> {
+pub fn parse_item(stream: TokenSlice) -> ParsedItem {
     alt((
         parse_trait_declaration,
         map(
@@ -41,7 +41,7 @@ pub fn parse_item<'a>(stream: TokenSlice<'a>) -> ParsedItem<'a> {
     ))(stream)
 }
 
-fn parse_trait_declaration<'a>(stream: TokenSlice<'a>) -> ParsedItem<'a> {
+fn parse_trait_declaration(stream: TokenSlice) -> ParsedItem {
     map(
         tuple((
             extract_identifier,

@@ -131,5 +131,9 @@ fn parse_token(s: LocatedSpan<&str>) -> ParsedToken {
 }
 
 pub fn tokenize<'a>(s: LocatedSpan<&'a str>) -> IResult<LocatedSpan<&'a str>, Vec<Token<'a>>> {
-    preceded(multispace0, many0(terminated(parse_token, multispace0)))(s)
+    use nom::combinator::all_consuming;
+    all_consuming(preceded(
+        multispace0,
+        many0(terminated(parse_token, multispace0)),
+    ))(s)
 }

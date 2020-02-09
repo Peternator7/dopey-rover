@@ -4,13 +4,32 @@ use nom::sequence::{terminated, tuple};
 use nom::IResult;
 
 use super::pattern::{parse_assignable_pattern, Pattern};
-use super::{expression::Expression, tag, Assignment, TryStatement, TokenSlice};
+use super::{expression::Expression, tag, TokenSlice};
 use crate::parsing::lexer::{Token, TokenType};
 use crate::parsing::parser::expression::parse_top_level_expression;
 
 pub type ParsedStatement<'a> = IResult<TokenSlice<'a>, Statement>;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
+pub struct Assignment {
+    pub lhs: Pattern,
+    pub rhs: Expression,
+}
+
+#[derive(Clone, Debug)]
+pub struct TryStatement(Expression);
+
+pub enum ImportStatement {
+    ModuleLevel {
+        path_segments: Vec<String>,
+    },
+    ItemLevel {
+        path_segments: Vec<String>,
+        items: Vec<String>,
+    },
+}
+
+#[derive(Clone, Debug)]
 pub enum Statement {
     Assignment(Assignment),
     TryStatement(TryStatement),

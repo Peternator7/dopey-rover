@@ -10,13 +10,13 @@ use nom::IResult;
 
 use super::statement::{parse_statement, Statement};
 use super::Assignment;
-use super::{extract_identifier, tag};
-use crate::parsing::lexer::Token;
+use super::{extract_identifier, tag, TokenSlice};
+use crate::parsing::lexer::{Token, TokenType};
 
 use self::basic_expressions::parse_basic_expression;
 use self::operators::*;
 
-pub type ParsedExpression<'a> = IResult<&'a [Token], Expression>;
+pub type ParsedExpression<'a> = IResult<TokenSlice<'a>, Expression>;
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum Expression {
@@ -60,18 +60,18 @@ impl Expression {
     }
 }
 
-pub fn parse_top_level_expression(stream: &[Token]) -> ParsedExpression {
+pub fn parse_top_level_expression(stream: TokenSlice) -> ParsedExpression {
     alt((parse_boolean_expression, block::parse_block_expression))(stream)
 }
 
-fn parse_boolean_operator<'a>(stream: &'a [Token]) -> IResult<&'a [Token], BinaryOperator> {
+fn parse_boolean_operator(stream: TokenSlice) -> IResult<TokenSlice, BinaryOperator> {
     alt((
-        value(BinaryOperator::And, tag(Token::And)),
-        value(BinaryOperator::Or, tag(Token::Or)),
+        value(BinaryOperator::And, tag(TokenType::And)),
+        value(BinaryOperator::Or, tag(TokenType::Or)),
     ))(stream)
 }
 
-fn parse_boolean_expression(stream: &[Token]) -> ParsedExpression {
+fn parse_boolean_expression(stream: TokenSlice) -> ParsedExpression {
     // In reality, we shouldn't let you 'return' multiple times
     // False || return True || return True
     // is nonsensical, but we can figure that out later. It's dead code
@@ -86,7 +86,7 @@ fn parse_boolean_expression(stream: &[Token]) -> ParsedExpression {
         let options = alt((
             map(parse_test_expression, Rhs::TestExpr),
             map(
-                tuple((tag(Token::Return), opt(parse_test_expression))),
+                tuple((tag(TokenType::Return), opt(parse_test_expression))),
                 |(_, expr)| Rhs::Return(expr.map(Box::new)),
             ),
         ));
@@ -109,11 +109,11 @@ fn parse_boolean_expression(stream: &[Token]) -> ParsedExpression {
     Ok((remainder, output))
 }
 
-fn parse_test_expression(stream: &[Token]) -> ParsedExpression {
+fn parse_test_expression(stream: TokenSlice) -> ParsedExpression {
     map(
         pair(
             parse_comparison_expression,
-            opt(preceded(tag(Token::Is), parse_comparison_expression)),
+            opt(preceded(tag(TokenType::Is), parse_comparison_expression)),
         ),
         |(lhs, rhs)| {
             if let Some(rhs) = rhs {
@@ -129,24 +129,24 @@ fn parse_test_expression(stream: &[Token]) -> ParsedExpression {
     )(stream)
 }
 
-fn parse_comparison_operator(stream: &[Token]) -> IResult<&[Token], BinaryOperator> {
+fn parse_comparison_operator(stream: TokenSlice) -> IResult<TokenSlice, BinaryOperator> {
     alt((
-        value(BinaryOperator::EqualTo, tag(Token::EqualEquals)),
-        value(BinaryOperator::NotEqualTo, tag(Token::NotEquals)),
-        value(BinaryOperator::LessThan, tag(Token::LessThan)),
-        value(BinaryOperator::GreaterThan, tag(Token::GreaterThan)),
+        value(BinaryOperator::EqualTo, tag(TokenType::EqualEquals)),
+        value(BinaryOperator::NotEqualTo, tag(TokenType::NotEquals)),
+        value(BinaryOperator::LessThan, tag(TokenType::LessThan)),
+        value(BinaryOperator::GreaterThan, tag(TokenType::GreaterThan)),
         value(
             BinaryOperator::LessThanOrEqualTo,
-            tag(Token::LessThanOrEqualTo),
+            tag(TokenType::LessThanOrEqualTo),
         ),
         value(
             BinaryOperator::GreaterThanOrEqualTo,
-            tag(Token::GreaterThanOrEqualTo),
+            tag(TokenType::GreaterThanOrEqualTo),
         ),
     ))(stream)
 }
 
-fn parse_comparison_expression(stream: &[Token]) -> ParsedExpression {
+fn parse_comparison_expression(stream: TokenSlice) -> ParsedExpression {
     map(
         pair(
             parse_addition_expression,
@@ -162,14 +162,14 @@ fn parse_comparison_expression(stream: &[Token]) -> ParsedExpression {
     )(stream)
 }
 
-fn parse_addition_operator(stream: &[Token]) -> IResult<&[Token], BinaryOperator> {
+fn parse_addition_operator(stream: TokenSlice) -> IResult<TokenSlice, BinaryOperator> {
     alt((
-        value(BinaryOperator::Add, tag(Token::Plus)),
-        value(BinaryOperator::Sub, tag(Token::Minus)),
+        value(BinaryOperator::Add, tag(TokenType::Plus)),
+        value(BinaryOperator::Sub, tag(TokenType::Minus)),
     ))(stream)
 }
 
-fn parse_addition_expression(stream: &[Token]) -> ParsedExpression {
+fn parse_addition_expression(stream: TokenSlice) -> ParsedExpression {
     let (rem, init) = parse_multiplication_expression(stream)?;
     fold_many0(
         pair(parse_addition_operator, parse_multiplication_expression),
@@ -180,15 +180,15 @@ fn parse_addition_expression(stream: &[Token]) -> ParsedExpression {
     )(rem)
 }
 
-fn parse_multiplication_operator(stream: &[Token]) -> IResult<&[Token], BinaryOperator> {
+fn parse_multiplication_operator(stream: TokenSlice) -> IResult<TokenSlice, BinaryOperator> {
     alt((
-        value(BinaryOperator::Divide, tag(Token::Divide)),
-        value(BinaryOperator::Mult, tag(Token::Multiply)),
-        value(BinaryOperator::Modulus, tag(Token::Modulus)),
+        value(BinaryOperator::Divide, tag(TokenType::Divide)),
+        value(BinaryOperator::Mult, tag(TokenType::Multiply)),
+        value(BinaryOperator::Modulus, tag(TokenType::Modulus)),
     ))(stream)
 }
 
-fn parse_multiplication_expression(stream: &[Token]) -> ParsedExpression {
+fn parse_multiplication_expression(stream: TokenSlice) -> ParsedExpression {
     let (rem, init) = parse_arithmatic_factor(stream)?;
     fold_many0(
         pair(parse_multiplication_operator, parse_arithmatic_factor),
@@ -199,11 +199,11 @@ fn parse_multiplication_expression(stream: &[Token]) -> ParsedExpression {
     )(rem)
 }
 
-fn parse_arithmatic_factor(stream: &[Token]) -> ParsedExpression {
+fn parse_arithmatic_factor(stream: TokenSlice) -> ParsedExpression {
     parse_call_expression(stream)
 }
 
-fn parse_call_expression(stream: &[Token]) -> ParsedExpression {
+fn parse_call_expression(stream: TokenSlice) -> ParsedExpression {
     let (rem, init) = parse_call_lhs_expression(stream)?;
     fold_many0(parse_call_lhs_expression, init, |acc, arg| {
         Expression::BinaryExpression(Box::new(BinaryExpression::new(
@@ -214,14 +214,14 @@ fn parse_call_expression(stream: &[Token]) -> ParsedExpression {
     })(rem)
 }
 
-fn parse_call_lhs_expression(stream: &[Token]) -> ParsedExpression {
+fn parse_call_lhs_expression(stream: TokenSlice) -> ParsedExpression {
     parse_head_expression(stream)
 }
 
-fn parse_head_expression(stream: &[Token]) -> ParsedExpression {
+fn parse_head_expression(stream: TokenSlice) -> ParsedExpression {
     let (rem, init) = parse_object_lookup_expression(stream)?;
     fold_many0(
-        pair(tag(Token::DoubleColon), parse_head_expression),
+        pair(tag(TokenType::DoubleColon), parse_head_expression),
         init,
         |acc, (_, rhs)| {
             Expression::BinaryExpression(Box::new(BinaryExpression::new(
@@ -233,10 +233,10 @@ fn parse_head_expression(stream: &[Token]) -> ParsedExpression {
     )(rem)
 }
 
-pub fn parse_object_lookup_expression(stream: &[Token]) -> ParsedExpression {
+pub fn parse_object_lookup_expression(stream: TokenSlice) -> ParsedExpression {
     let (rem, init) = parse_basic_expression(stream)?;
     fold_many0(
-        preceded(tag(Token::Period), extract_identifier),
+        preceded(tag(TokenType::Period), extract_identifier),
         init,
         |acc, property| Expression::ObjectLookupExpression(Box::new(acc), property),
     )(rem)

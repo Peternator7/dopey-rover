@@ -4,12 +4,12 @@ use nom::multi::{fold_many0, many0, separated_list};
 use nom::sequence::{pair, preceded, tuple};
 use nom::IResult;
 
-use super::{extract_identifier, tag, test};
-use crate::parsing::lexer::Token;
+use super::{extract_identifier, tag, test, TokenSlice};
+use crate::parsing::lexer::{Token, TokenType};
 use crate::parsing::parser::expression::parse_object_lookup_expression;
 use crate::parsing::parser::expression::Expression;
 
-pub type ParsedPattern<'a> = IResult<&'a [Token], Pattern>;
+pub type ParsedPattern<'a> = IResult<TokenSlice<'a>, Pattern>;
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum Pattern {
@@ -50,28 +50,28 @@ pub enum PropertyPattern {
     Test(String, Box<Pattern>),
 }
 
-pub fn parse_assignable_pattern(stream: &[Token]) -> ParsedPattern {
+pub fn parse_assignable_pattern(stream: TokenSlice) -> ParsedPattern {
     verify(parse_top_level_pattern, Pattern::is_assignable)(stream)
 }
 
-pub fn parse_object_creation_property_pattern(stream: &[Token]) -> ParsedPattern {
+pub fn parse_object_creation_property_pattern(stream: TokenSlice) -> ParsedPattern {
     verify(parse_top_level_pattern, Pattern::is_valid_object_property)(stream)
 }
 
-pub fn parse_top_level_pattern(stream: &[Token]) -> ParsedPattern {
+pub fn parse_top_level_pattern(stream: TokenSlice) -> ParsedPattern {
     parse_head_pattern(stream)
 }
 
-pub fn parse_head_pattern(stream: &[Token]) -> ParsedPattern {
+pub fn parse_head_pattern(stream: TokenSlice) -> ParsedPattern {
     let (rem, init) = parse_basic_pattern(stream)?;
     fold_many0(
-        pair(tag(Token::DoubleColon), parse_head_pattern),
+        pair(tag(TokenType::DoubleColon), parse_head_pattern),
         init,
         |acc, (_, rhs)| Pattern::ConsPattern(Box::new(acc), Box::new(rhs)),
     )(rem)
 }
 
-pub fn parse_basic_pattern(stream: &[Token]) -> ParsedPattern {
+pub fn parse_basic_pattern(stream: TokenSlice) -> ParsedPattern {
     // In reality, we shouldn't let you 'return' multiple times
     // False || return True || return True
     // is nonsensical, but we can figure that out later. It's dead code
@@ -85,30 +85,30 @@ pub fn parse_basic_pattern(stream: &[Token]) -> ParsedPattern {
     ))(stream)
 }
 
-pub fn parse_string_literal_pattern(stream: &[Token]) -> ParsedPattern {
-    map(test(Token::is_string_literal), |tok| {
-        if let Token::StringLiteral(s) = tok {
-            Pattern::StringLiteral(s.clone())
+pub fn parse_string_literal_pattern(stream: TokenSlice) -> ParsedPattern {
+    map(test(TokenType::is_string_literal), |tok| {
+        if let TokenType::StringLiteral(s) = tok.ty {
+            Pattern::StringLiteral(s.to_string())
         } else {
             unreachable!()
         }
     })(stream)
 }
 
-fn parse_number_literal_pattern(stream: &[Token]) -> ParsedPattern {
-    map(test(Token::is_number), |tok| {
-        if let Token::Number(f) = tok {
-            Pattern::Number(*f)
+fn parse_number_literal_pattern(stream: TokenSlice) -> ParsedPattern {
+    map(test(TokenType::is_number), |tok| {
+        if let TokenType::Number(f) = tok.ty {
+            Pattern::Number(f)
         } else {
             unreachable!()
         }
     })(stream)
 }
 
-fn parse_test_pattern(stream: &[Token]) -> ParsedPattern {
+fn parse_test_pattern(stream: TokenSlice) -> ParsedPattern {
     map(
         tuple((
-            tag(Token::QuestionMark),
+            tag(TokenType::QuestionMark),
             parse_object_lookup_expression,
             opt(parse_basic_pattern),
         )),
@@ -116,7 +116,7 @@ fn parse_test_pattern(stream: &[Token]) -> ParsedPattern {
     )(stream)
 }
 
-fn parse_ident_pattern(stream: &[Token]) -> ParsedPattern {
+fn parse_ident_pattern(stream: TokenSlice) -> ParsedPattern {
     map(
         pair(extract_identifier, many0(extract_identifier)),
         |(ident, args)| {
@@ -129,11 +129,11 @@ fn parse_ident_pattern(stream: &[Token]) -> ParsedPattern {
     )(stream)
 }
 
-fn parse_object_property_pattern(stream: &[Token]) -> IResult<&[Token], PropertyPattern> {
+fn parse_object_property_pattern(stream: TokenSlice) -> IResult<TokenSlice, PropertyPattern> {
     map(
         tuple((
             extract_identifier,
-            opt(preceded(tag(Token::Colon), parse_top_level_pattern)),
+            opt(preceded(tag(TokenType::Colon), parse_top_level_pattern)),
         )),
         |(ident, patt)| match patt {
             Some(patt) => PropertyPattern::Test(ident, Box::new(patt)),
@@ -142,19 +142,19 @@ fn parse_object_property_pattern(stream: &[Token]) -> IResult<&[Token], Property
     )(stream)
 }
 
-fn parse_object_pattern(stream: &[Token]) -> ParsedPattern {
+fn parse_object_pattern(stream: TokenSlice) -> ParsedPattern {
     map(
         tuple((
-            tag(Token::OpenBrace),
-            separated_list(tag(Token::Comma), parse_object_property_pattern),
-            tag(Token::CloseBrace),
+            tag(TokenType::OpenBrace),
+            separated_list(tag(TokenType::Comma), parse_object_property_pattern),
+            tag(TokenType::CloseBrace),
         )),
         |(_, props, _)| Pattern::ObjectDestructuring(props),
     )(stream)
 }
 
-fn parse_array_pattern(stream: &[Token]) -> ParsedPattern {
-    fn parse_array_pattern_inner(stream: &[Token]) -> ParsedPattern {
+fn parse_array_pattern(stream: TokenSlice) -> ParsedPattern {
+    fn parse_array_pattern_inner(stream: TokenSlice) -> ParsedPattern {
         use Pattern::*;
 
         let res = parse_top_level_pattern(stream);
@@ -163,7 +163,7 @@ fn parse_array_pattern(stream: &[Token]) -> ParsedPattern {
         }
 
         let (rem, head) = res.unwrap();
-        let res = preceded(tag(Token::Comma), parse_array_pattern_inner)(rem);
+        let res = preceded(tag(TokenType::Comma), parse_array_pattern_inner)(rem);
         if let Ok((rem, tail)) = res {
             Ok((rem, ConsPattern(Box::new(head), Box::new(tail))))
         } else {
@@ -173,9 +173,9 @@ fn parse_array_pattern(stream: &[Token]) -> ParsedPattern {
 
     map(
         tuple((
-            tag(Token::OpenBracket),
+            tag(TokenType::OpenBracket),
             parse_array_pattern_inner,
-            tag(Token::CloseBracket),
+            tag(TokenType::CloseBracket),
         )),
         |(_, elements, _)| elements,
     )(stream)

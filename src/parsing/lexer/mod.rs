@@ -1,9 +1,9 @@
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take_while};
-use nom::character::complete::{alpha1, alphanumeric0, line_ending, multispace0, space0, space1};
-use nom::combinator::{map, map_res, recognize};
+use nom::character::complete::{alpha1, alphanumeric0, alphanumeric1, multispace0};
+use nom::combinator::{map, not, recognize, value};
 use nom::multi::many0;
-use nom::sequence::{pair, preceded, terminated, tuple};
+use nom::sequence::{pair, preceded, terminated};
 use nom::IResult;
 
 use nom_locate::LocatedSpan;
@@ -23,25 +23,25 @@ fn parse_float(s: LocatedSpan<&str>) -> ParsedToken {
 fn parse_alphanumeric(s: LocatedSpan<&str>) -> ParsedToken {
     let (s, pos) = nom_locate::position(s)?;
     let (s, text) = recognize(pair(alpha1, alphanumeric0))(s)?;
-    let output = match text.fragment {
-        "function" => Token::new(pos, TokenType::Function),
-        "trait" => Token::new(pos, TokenType::Trait),
-        "if" => Token::new(pos, TokenType::If),
-        "else" => Token::new(pos, TokenType::Else),
-        "import" => Token::new(pos, TokenType::Import),
-        "from" => Token::new(pos, TokenType::From),
-        "with" => Token::new(pos, TokenType::With),
-        "new" => Token::new(pos, TokenType::New),
-        "is" => Token::new(pos, TokenType::Is),
-        "return" => Token::new(pos, TokenType::Return),
-        "match" => Token::new(pos, TokenType::Match),
-        "try" => Token::new(pos, TokenType::Try),
-        "and" => Token::new(pos, TokenType::And),
-        "or" => Token::new(pos, TokenType::Or),
-        _ => Token::new(pos, TokenType::Ident(text.fragment)),
+    let tt = match text.fragment {
+        "function" => TokenType::Function,
+        "trait" => TokenType::Trait,
+        "if" => TokenType::If,
+        "else" => TokenType::Else,
+        "import" => TokenType::Import,
+        "from" => TokenType::From,
+        "with" => TokenType::With,
+        "new" => TokenType::New,
+        "is" => TokenType::Is,
+        "return" => TokenType::Return,
+        "match" => TokenType::Match,
+        "try" => TokenType::Try,
+        "and" => TokenType::And,
+        "or" => TokenType::Or,
+        _ => TokenType::Ident(text.fragment),
     };
 
-    Ok((s, output))
+    Ok((s, Token::new(pos, tt)))
 }
 
 fn parse_string(s: LocatedSpan<&str>) -> ParsedToken {
@@ -53,11 +53,14 @@ fn parse_string(s: LocatedSpan<&str>) -> ParsedToken {
 }
 
 fn parse_get_set(s: LocatedSpan<&str>) -> ParsedToken {
-    map_res(recognize(pair(tag("@"), alphanumeric0)), |s| match s {
-        "@get" => Ok(Token::Get),
-        "@set" => Ok(Token::Set),
-        _ => Result::Err("Invalid Token"),
-    })(s)
+    let (s, pos) = nom_locate::position(s)?;
+    let (s, _) = tag("@")(s)?;
+    let (s, tok) = alt((
+        value(TokenType::Get, tag("get")),
+        value(TokenType::Set, tag("set")),
+    ))(s)?;
+    let (s, _) = not(alphanumeric1)(s)?;
+    Ok((s, Token::new(pos, tok)))
 }
 
 fn parse_operators(s: LocatedSpan<&str>) -> ParsedToken {
@@ -127,6 +130,6 @@ fn parse_token(s: LocatedSpan<&str>) -> ParsedToken {
     ))(s)
 }
 
-pub fn tokenize(s: &str) -> IResult<&str, Vec<Token>> {
+pub fn tokenize<'a>(s: LocatedSpan<&'a str>) -> IResult<LocatedSpan<&'a str>, Vec<Token<'a>>> {
     preceded(multispace0, many0(terminated(parse_token, multispace0)))(s)
 }

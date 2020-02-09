@@ -36,7 +36,6 @@ pub enum TokenType<'a> {
     Number(f32),
     StringLiteral(&'a str),
     // Indented(usize),
-
     Plus,
     Minus,
     Multiply,
@@ -72,7 +71,7 @@ pub enum TokenType<'a> {
 
 macro_rules! generate_is_a_ {
     ($name:tt, $variant:pat) => {
-        pub fn $name(&self) -> bool {
+        pub fn $name<'b>(&'b self) -> bool {
             match self {
                 $variant => true,
                 _ => false
@@ -82,7 +81,7 @@ macro_rules! generate_is_a_ {
 }
 
 impl<'a> TokenType<'a> {
-    generate_is_a_!(is_indented, TokenType::Indented(_));
+    // generate_is_a_!(is_indented, TokenType::Indented(_));
     generate_is_a_!(is_ident, TokenType::Ident(_));
     generate_is_a_!(is_number, TokenType::Number(_));
     generate_is_a_!(is_string_literal, TokenType::StringLiteral(_));

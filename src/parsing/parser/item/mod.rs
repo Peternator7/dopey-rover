@@ -7,11 +7,11 @@ use nom::IResult;
 use super::expression::parse_top_level_expression;
 use super::pattern::parse_assignable_pattern;
 use super::statement::{parse_assignment, parse_try_statement};
-use super::{extract_identifier, tag};
+use super::{extract_identifier, tag, TokenSlice};
 use super::{Assignment, TryStatement};
-use crate::parsing::lexer::Token;
+use crate::parsing::lexer::{Token, TokenType};
 
-pub type ParsedItem<'a> = IResult<&'a [Token], Item>;
+pub type ParsedItem<'a> = IResult<TokenSlice<'a>, Item>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Item {
@@ -27,13 +27,13 @@ pub enum TraitItem {
     Function { name: String, args: usize },
 }
 
-pub fn parse_item(stream: &[Token]) -> ParsedItem {
+pub fn parse_item<'a>(stream: TokenSlice<'a>) -> ParsedItem<'a> {
     alt((
         parse_trait_declaration,
         map(
             terminated(
                 parse_assignment(parse_assignable_pattern, parse_top_level_expression),
-                tag(Token::SemiColon),
+                tag(TokenType::SemiColon),
             ),
             Item::Assignment,
         ),
@@ -41,30 +41,30 @@ pub fn parse_item(stream: &[Token]) -> ParsedItem {
     ))(stream)
 }
 
-fn parse_trait_declaration(stream: &[Token]) -> ParsedItem {
+fn parse_trait_declaration<'a>(stream: TokenSlice<'a>) -> ParsedItem<'a> {
     map(
         tuple((
             extract_identifier,
-            tag(Token::Equals),
-            tag(Token::Trait),
-            tag(Token::OpenBrace),
+            tag(TokenType::Equals),
+            tag(TokenType::Trait),
+            tag(TokenType::OpenBrace),
             parse_trait_item_list,
-            tag(Token::CloseBrace),
-            tag(Token::SemiColon),
+            tag(TokenType::CloseBrace),
+            tag(TokenType::SemiColon),
         )),
         |(ident, _, _, _, expr, _, _)| Item::TraitDeclaration(ident, expr),
     )(stream)
 }
 
-fn parse_trait_item_list(stream: &[Token]) -> IResult<&[Token], Vec<TraitItem>> {
+fn parse_trait_item_list(stream: TokenSlice) -> IResult<TokenSlice, Vec<TraitItem>> {
     terminated(
-        separated_nonempty_list(tag(Token::Comma), parse_trait_item),
-        opt(tag(Token::Comma)),
+        separated_nonempty_list(tag(TokenType::Comma), parse_trait_item),
+        opt(tag(TokenType::Comma)),
     )(stream)
     .or_else(|_| Ok((stream, Vec::new())))
 }
 
-fn parse_trait_item(stream: &[Token]) -> IResult<&[Token], TraitItem> {
+fn parse_trait_item<'a>(stream: TokenSlice<'a>) -> IResult<TokenSlice<'a>, TraitItem> {
     map(
         tuple((extract_identifier, many0(extract_identifier))),
         |(ident, args)| {

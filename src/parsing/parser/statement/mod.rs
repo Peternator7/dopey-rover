@@ -4,11 +4,11 @@ use nom::sequence::{terminated, tuple};
 use nom::IResult;
 
 use super::pattern::{parse_assignable_pattern, Pattern};
-use super::{expression::Expression, tag, Assignment, TryStatement};
-use crate::parsing::lexer::Token;
+use super::{expression::Expression, tag, Assignment, TryStatement, TokenSlice};
+use crate::parsing::lexer::{Token, TokenType};
 use crate::parsing::parser::expression::parse_top_level_expression;
 
-pub type ParsedStatement<'a> = IResult<&'a [Token], Statement>;
+pub type ParsedStatement<'a> = IResult<TokenSlice<'a>, Statement>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Statement {
@@ -18,12 +18,12 @@ pub enum Statement {
     ModuleImport,
 }
 
-pub fn parse_statement(stream: &[Token]) -> ParsedStatement {
+pub fn parse_statement(stream: TokenSlice) -> ParsedStatement {
     alt((
         map(
             terminated(
                 parse_assignment(parse_assignable_pattern, parse_top_level_expression),
-                tag(Token::SemiColon),
+                tag(TokenType::SemiColon),
             ),
             Statement::Assignment,
         ),
@@ -35,38 +35,38 @@ pub fn parse_statement(stream: &[Token]) -> ParsedStatement {
 pub fn parse_assignment<'a, P, F>(
     pat_fn: P,
     expr_fn: F,
-) -> impl Fn(&'a [Token]) -> IResult<&'a [Token], Assignment>
+) -> impl Fn(TokenSlice<'a>) -> IResult<TokenSlice<'a>, Assignment>
 where
-    P: Fn(&[Token]) -> IResult<&[Token], Pattern>,
-    F: Fn(&[Token]) -> IResult<&[Token], Expression>,
+    P: Fn(TokenSlice) -> IResult<TokenSlice, Pattern>,
+    F: Fn(TokenSlice) -> IResult<TokenSlice, Expression>,
 {
     map(
-        tuple((pat_fn, tag(Token::Equals), expr_fn)),
+        tuple((pat_fn, tag(TokenType::Equals), expr_fn)),
         |(lhs, _, rhs)| Assignment { lhs, rhs },
     )
 }
 
-pub fn parse_try_statement(stream: &[Token]) -> IResult<&[Token], TryStatement> {
+pub fn parse_try_statement(stream: TokenSlice) -> IResult<TokenSlice, TryStatement> {
     map(
         tuple((
-            tag(Token::Try),
+            tag(TokenType::Try),
             parse_top_level_expression,
-            tag(Token::SemiColon),
+            tag(TokenType::SemiColon),
         )),
         |(_, expr, _)| TryStatement(expr),
     )(stream)
 }
 
-pub fn parse_set_statement(stream: &[Token]) -> ParsedStatement {
+pub fn parse_set_statement(stream: TokenSlice) -> ParsedStatement {
     map(
         tuple((
-            tag(Token::Set),
-            tag(Token::OpenParen),
+            tag(TokenType::Set),
+            tag(TokenType::OpenParen),
             parse_top_level_expression,
-            tag(Token::Comma),
+            tag(TokenType::Comma),
             parse_top_level_expression,
-            tag(Token::CloseParen),
-            tag(Token::SemiColon),
+            tag(TokenType::CloseParen),
+            tag(TokenType::SemiColon),
         )),
         |(_, _, lhs, _, rhs, _, _)| Statement::SetStatement(lhs, rhs),
     )(stream)

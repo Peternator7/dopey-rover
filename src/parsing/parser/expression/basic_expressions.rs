@@ -8,7 +8,7 @@ use super::{
     parse_top_level_expression, BinaryExpression, BinaryOperator, Expression, ParsedExpression,
 };
 use crate::parsing::{
-    lexer::{Token, TokenType},
+    lexer::TokenType,
     parser::{
         extract_identifier, pattern::parse_object_creation_property_pattern, statement::Assignment,
         tag, test, Parsed, TokenSlice,
@@ -119,13 +119,15 @@ fn parse_object_property(stream: TokenSlice) -> IResult<TokenSlice, Parsed<Assig
             parse_top_level_expression,
         )),
         |(patt, _, expr)| {
+            let start_pos = patt.start_pos;
+            let end_pos = expr.end_pos;
             Parsed::new(
                 Assignment {
                     lhs: patt,
                     rhs: expr,
                 },
-                patt.start_pos,
-                expr.end_pos,
+                start_pos,
+                end_pos,
             )
         },
     )(stream)
@@ -144,6 +146,8 @@ fn parse_array_expression(stream: TokenSlice) -> ParsedExpression {
         let (rem, head) = res.unwrap();
         let res = preceded(tag(TokenType::Comma), parse_array_expression_inner)(rem);
         if let Ok((rem, tail)) = res {
+            let start_pos = head.start_pos;
+            let end_pos = tail.end_pos;
             Ok((
                 rem,
                 Parsed::new(
@@ -152,11 +156,13 @@ fn parse_array_expression(stream: TokenSlice) -> ParsedExpression {
                         head,
                         tail,
                     ))),
-                    head.start_pos,
-                    tail.end_pos,
+                    start_pos,
+                    end_pos,
                 ),
             ))
         } else {
+            let start_pos = head.start_pos;
+            let end_pos = head.end_pos;
             Ok((
                 rem,
                 Parsed::new(
@@ -165,8 +171,8 @@ fn parse_array_expression(stream: TokenSlice) -> ParsedExpression {
                         head,
                         Parsed::new(Expression::NilArrayExpression, Position::new(0, 0), None),
                     ))),
-                    head.start_pos,
-                    head.end_pos,
+                    start_pos,
+                    end_pos,
                 ),
             ))
         }
@@ -178,6 +184,10 @@ fn parse_array_expression(stream: TokenSlice) -> ParsedExpression {
             parse_array_expression_inner,
             tag(TokenType::CloseBracket),
         )),
-        |(start, elements, end)| elements,
+        |(start, mut elements, end)| {
+            elements.start_pos = start.start_pos;
+            elements.end_pos = Some(end.end_pos);
+            elements
+        },
     )(stream)
 }

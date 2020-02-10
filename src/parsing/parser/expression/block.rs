@@ -54,6 +54,7 @@ fn parse_if_else_expression(stream: TokenSlice) -> ParsedExpression {
             parse_block_expression,
         )),
         |(start, cond, if_block, _, else_block)| {
+            let end_pos = else_block.end_pos;
             Parsed::new(
                 Expression::IfElseExpression(
                     Box::new(cond),
@@ -61,7 +62,7 @@ fn parse_if_else_expression(stream: TokenSlice) -> ParsedExpression {
                     Box::new(else_block),
                 ),
                 start.start_pos,
-                else_block.end_pos,
+                end_pos,
             )
         },
     )(stream)

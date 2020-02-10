@@ -119,18 +119,22 @@ fn parse_boolean_expression(stream: TokenSlice) -> ParsedExpression {
         match pair(parse_boolean_operator, options)(remainder) {
             Ok((rem, (op, Rhs::TestExpr(rhs)))) => {
                 remainder = rem;
+                let start_pos = output.start_pos;
+                let end_pos = rhs.end_pos;
                 output = Parsed::new(
                     Expression::BinaryExpression(Box::new(BinaryExpression::new(op, output, rhs))),
-                    output.start_pos,
-                    rhs.end_pos,
+                    start_pos,
+                    end_pos,
                 )
             }
             Ok((rem, (op, Rhs::Return(rhs)))) => {
                 remainder = rem;
+                let start_pos = output.start_pos;
+                let end_pos = rhs.end_pos;
                 output = Parsed::new(
                     Expression::BooleanReturnExpression(op, Box::new(output), rhs),
-                    output.start_pos,
-                    rhs.end_pos,
+                    start_pos,
+                    end_pos,
                 );
                 break;
             }
@@ -149,14 +153,16 @@ fn parse_test_expression(stream: TokenSlice) -> ParsedExpression {
         ),
         |(lhs, rhs)| {
             if let Some(rhs) = rhs {
+                let start_pos = lhs.start_pos;
+                let end_pos = rhs.end_pos;
                 Parsed::new(
                     Expression::BinaryExpression(Box::new(BinaryExpression::new(
                         BinaryOperator::Test,
                         lhs,
                         rhs,
                     ))),
-                    lhs.start_pos,
-                    rhs.end_pos,
+                    start_pos,
+                    end_pos,
                 )
             } else {
                 lhs
@@ -190,10 +196,12 @@ fn parse_comparison_expression(stream: TokenSlice) -> ParsedExpression {
         ),
         |(lhs, rhs)| {
             if let Some((op, rhs)) = rhs {
+                let start_pos = lhs.start_pos;
+                let end_pos = rhs.end_pos;
                 Parsed::new(
                     Expression::BinaryExpression(Box::new(BinaryExpression::new(op, lhs, rhs))),
-                    lhs.start_pos,
-                    rhs.end_pos,
+                    start_pos,
+                    end_pos,
                 )
             } else {
                 lhs
@@ -215,10 +223,12 @@ fn parse_addition_expression(stream: TokenSlice) -> ParsedExpression {
         pair(parse_addition_operator, parse_multiplication_expression),
         init,
         |acc, (op, rhs)| {
+            let start_pos = acc.start_pos;
+            let end_pos = rhs.end_pos;
             Parsed::new(
                 Expression::BinaryExpression(Box::new(BinaryExpression::new(op, acc, rhs))),
-                acc.start_pos,
-                rhs.end_pos,
+                start_pos,
+                end_pos,
             )
         },
     )(rem)
@@ -238,10 +248,12 @@ fn parse_multiplication_expression(stream: TokenSlice) -> ParsedExpression {
         pair(parse_multiplication_operator, parse_arithmatic_factor),
         init,
         |acc, (op, rhs)| {
+            let start_pos = acc.start_pos;
+            let end_pos = rhs.end_pos;
             Parsed::new(
                 Expression::BinaryExpression(Box::new(BinaryExpression::new(op, acc, rhs))),
-                acc.start_pos,
-                rhs.end_pos,
+                start_pos,
+                end_pos,
             )
         },
     )(rem)
@@ -254,14 +266,16 @@ fn parse_arithmatic_factor(stream: TokenSlice) -> ParsedExpression {
 fn parse_call_expression(stream: TokenSlice) -> ParsedExpression {
     let (rem, init) = parse_call_lhs_expression(stream)?;
     fold_many0(parse_call_lhs_expression, init, |acc, arg| {
+        let start_pos = acc.start_pos;
+        let end_pos = arg.end_pos;
         Parsed::new(
             Expression::BinaryExpression(Box::new(BinaryExpression {
                 op: BinaryOperator::Call,
                 lhs: acc,
                 rhs: arg,
             })),
-            acc.start_pos,
-            arg.end_pos,
+            start_pos,
+            end_pos,
         )
     })(rem)
 }
@@ -276,14 +290,16 @@ fn parse_head_expression(stream: TokenSlice) -> ParsedExpression {
         pair(tag(TokenType::DoubleColon), parse_head_expression),
         init,
         |acc, (_, rhs)| {
+            let start_pos = acc.start_pos;
+            let end_pos = rhs.end_pos;
             Parsed::new(
                 Expression::BinaryExpression(Box::new(BinaryExpression {
                     op: BinaryOperator::Cons,
                     lhs: acc,
                     rhs,
                 })),
-                acc.start_pos,
-                rhs.end_pos,
+                start_pos,
+                end_pos,
             )
         },
     )(rem)
@@ -295,10 +311,12 @@ pub fn parse_object_lookup_expression(stream: TokenSlice) -> ParsedExpression {
         preceded(tag(TokenType::Period), extract_identifier),
         init,
         |acc, property| {
+            let start_pos = acc.start_pos;
+            let end_pos = property.end_pos;
             Parsed::new(
                 Expression::ObjectLookupExpression(Box::new(acc), property),
-                acc.start_pos,
-                property.end_pos,
+                start_pos,
+                end_pos,
             )
         },
     )(rem)

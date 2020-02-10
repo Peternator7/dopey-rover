@@ -69,7 +69,11 @@ where
 {
     map(
         tuple((pat_fn, tag(TokenType::Equals), expr_fn)),
-        |(lhs, _, rhs)| Parsed::new(Assignment { lhs, rhs }, lhs.start_pos, rhs.end_pos),
+        |(lhs, _, rhs)| {
+            let start_pos = lhs.start_pos;
+            let end_pos = rhs.end_pos;
+            Parsed::new(Assignment { lhs, rhs }, start_pos, end_pos)
+        },
     )
 }
 

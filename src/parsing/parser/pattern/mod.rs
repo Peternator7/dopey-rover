@@ -8,6 +8,7 @@ use super::{extract_identifier, tag, test, Parsed, TokenSlice};
 use crate::parsing::lexer::TokenType;
 use crate::parsing::parser::expression::parse_object_lookup_expression;
 use crate::parsing::parser::expression::Expression;
+use crate::parsing::Position;
 
 pub type ParsedPattern<'a> = IResult<TokenSlice<'a>, Parsed<Pattern>>;
 
@@ -16,8 +17,8 @@ pub enum Pattern {
     Number(f32),
     StringLiteral(String),
     Identifier(String),
-    Function(String, Vec<String>),
-    ObjectDestructuring(Vec<PropertyPattern>),
+    Function(Parsed<String>, Vec<Parsed<String>>),
+    ObjectDestructuring(Vec<Parsed<PropertyPattern>>),
     ConsPattern(Box<Parsed<Pattern>>, Box<Parsed<Pattern>>),
     NilArrayPattern,
     TestPattern(Parsed<Expression>, Option<Box<Parsed<Pattern>>>),
@@ -49,7 +50,7 @@ impl Pattern {
 #[derive(Clone, Debug)]
 pub enum PropertyPattern {
     Existance(String),
-    Test(String, Box<Pattern>),
+    Test(Parsed<String>, Box<Parsed<Pattern>>),
 }
 
 pub fn parse_assignable_pattern(stream: TokenSlice) -> ParsedPattern {
@@ -72,10 +73,12 @@ pub fn parse_head_pattern(stream: TokenSlice) -> ParsedPattern {
         pair(tag(TokenType::DoubleColon), parse_head_pattern),
         init,
         |acc, (_, rhs)| {
+            let start_pos = acc.start_pos;
+            let end_pos = rhs.end_pos;
             Parsed::new(
                 Pattern::ConsPattern(Box::new(acc), Box::new(rhs)),
-                acc.start_pos,
-                rhs.end_pos,
+                start_pos,
+                end_pos,
             )
         },
     )(rem)
@@ -101,7 +104,7 @@ pub fn parse_string_literal_pattern(stream: TokenSlice) -> ParsedPattern {
             Parsed::new(
                 Pattern::StringLiteral(s.to_string()),
                 tok.start_pos,
-                tok.end_pos,
+                Some(tok.end_pos),
             )
         } else {
             unreachable!()
@@ -112,7 +115,7 @@ pub fn parse_string_literal_pattern(stream: TokenSlice) -> ParsedPattern {
 fn parse_number_literal_pattern(stream: TokenSlice) -> ParsedPattern {
     map(test(TokenType::is_number), |tok| {
         if let TokenType::Number(f) = tok.ty {
-            Parsed::new(Pattern::Number(f), tok.start_pos, tok.end_pos)
+            Parsed::new(Pattern::Number(f), tok.start_pos, Some(tok.end_pos))
         } else {
             unreachable!()
         }
@@ -127,10 +130,14 @@ fn parse_test_pattern(stream: TokenSlice) -> ParsedPattern {
             opt(parse_basic_pattern),
         )),
         |(start, parent, unpacked)| {
+            let end_pos = unpacked
+                .as_ref()
+                .map(|patt| patt.end_pos)
+                .unwrap_or(parent.end_pos);
             Parsed::new(
                 Pattern::TestPattern(parent, unpacked.map(Box::new)),
                 start.start_pos,
-                unpacked.map(|patt| patt.end_pos).unwrap_or(parent.end_pos),
+                end_pos,
             )
         },
     )(stream)
@@ -140,10 +147,12 @@ fn parse_ident_pattern(stream: TokenSlice) -> ParsedPattern {
     map(
         pair(extract_identifier, many0(extract_identifier)),
         |(ident, args)| {
+            let start_pos = ident.start_pos;
             if !args.is_empty() {
-                Pattern::Function(ident, args)
+                let end_pos = args.last().expect("We just checked it's not empty").end_pos;
+                Parsed::new(Pattern::Function(ident, args), start_pos, end_pos)
             } else {
-                Pattern::Identifier(ident)
+                Parsed::new(Pattern::Identifier(ident.data), start_pos, ident.end_pos)
             }
         },
     )(stream)
@@ -158,8 +167,20 @@ fn parse_object_property_pattern(
             opt(preceded(tag(TokenType::Colon), parse_top_level_pattern)),
         )),
         |(ident, patt)| match patt {
-            Some(patt) => PropertyPattern::Test(ident, Box::new(patt)),
-            None => PropertyPattern::Existance(ident),
+            Some(patt) => {
+                let start_pos = ident.start_pos;
+                let end_pos = patt.end_pos;
+                Parsed::new(
+                    PropertyPattern::Test(ident, Box::new(patt)),
+                    start_pos,
+                    end_pos,
+                )
+            }
+            None => Parsed::new(
+                PropertyPattern::Existance(ident.data),
+                ident.start_pos,
+                ident.end_pos,
+            ),
         },
     )(stream)
 }
@@ -171,7 +192,13 @@ fn parse_object_pattern(stream: TokenSlice) -> ParsedPattern {
             separated_list(tag(TokenType::Comma), parse_object_property_pattern),
             tag(TokenType::CloseBrace),
         )),
-        |(_, props, _)| Pattern::ObjectDestructuring(props),
+        |(start, props, end)| {
+            Parsed::new(
+                Pattern::ObjectDestructuring(props),
+                start.start_pos,
+                Some(end.end_pos),
+            )
+        },
     )(stream)
 }
 
@@ -181,15 +208,25 @@ fn parse_array_pattern(stream: TokenSlice) -> ParsedPattern {
 
         let res = parse_top_level_pattern(stream);
         if res.is_err() {
-            return Ok((stream, NilArrayPattern));
+            let nil = Parsed::new(NilArrayPattern, Position::new(0, 0), None);
+            return Ok((stream, nil));
         }
 
         let (rem, head) = res.unwrap();
+        let head = Box::new(head);
+
         let res = preceded(tag(TokenType::Comma), parse_array_pattern_inner)(rem);
         if let Ok((rem, tail)) = res {
-            Ok((rem, ConsPattern(Box::new(head), Box::new(tail))))
+            let start_pos = head.start_pos;
+            let end_pos = tail.end_pos;
+            let output = Parsed::new(ConsPattern(head, Box::new(tail)), start_pos, end_pos);
+            Ok((rem, output))
         } else {
-            Ok((rem, ConsPattern(Box::new(head), Box::new(NilArrayPattern))))
+            let start_pos = head.start_pos;
+            let end_pos = head.end_pos;
+            let nil = Parsed::new(NilArrayPattern, Position::new(0, 0), None);
+            let output = Parsed::new(ConsPattern(head, Box::new(nil)), start_pos, end_pos);
+            Ok((rem, output))
         }
     }
 

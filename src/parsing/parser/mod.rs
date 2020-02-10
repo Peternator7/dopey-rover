@@ -61,7 +61,7 @@ where
 
 fn extract_identifier<'a>(stream: &'a [Token<'a>]) -> IResult<&'a [Token<'a>], Parsed<String>> {
     map(test(TokenType::is_ident), |tok| match tok.ty {
-        TokenType::Ident(s) => Parsed::new(s.to_string(), tok.start_pos, tok.end_pos),
+        TokenType::Ident(s) => Parsed::new(s.to_string(), tok.start_pos, Some(tok.end_pos)),
         _ => unreachable!(),
     })(stream)
 }

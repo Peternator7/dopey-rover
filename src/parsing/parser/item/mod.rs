@@ -8,10 +8,10 @@ use super::expression::parse_top_level_expression;
 use super::pattern::parse_assignable_pattern;
 use super::statement::{parse_assignment, parse_try_statement};
 use super::statement::{Assignment, TryStatement};
-use super::{extract_identifier, tag, TokenSlice};
-use crate::parsing::lexer::{Token, TokenType};
+use super::{extract_identifier, tag, Parsed, TokenSlice};
+use crate::parsing::lexer::TokenType;
 
-pub type ParsedItem<'a> = IResult<TokenSlice<'a>, Item>;
+pub type ParsedItem<'a> = IResult<TokenSlice<'a>, Parsed<Item>>;
 
 #[derive(Debug, Clone)]
 pub enum Item {
@@ -31,13 +31,21 @@ pub fn parse_item(stream: TokenSlice) -> ParsedItem {
     alt((
         parse_trait_declaration,
         map(
-            terminated(
+            tuple((
                 parse_assignment(parse_assignable_pattern, parse_top_level_expression),
                 tag(TokenType::SemiColon),
-            ),
-            Item::Assignment,
+            )),
+            |(stmt, end)| {
+                Parsed::new(
+                    Item::Assignment(stmt.data),
+                    stmt.start_pos,
+                    Some(end.end_pos),
+                )
+            },
         ),
-        map(parse_try_statement, Item::TryStatement),
+        map(parse_try_statement, |t| {
+            Parsed::new(Item::TryStatement(t.data), t.start_pos, t.end_pos)
+        }),
     ))(stream)
 }
 
@@ -52,7 +60,13 @@ fn parse_trait_declaration(stream: TokenSlice) -> ParsedItem {
             tag(TokenType::CloseBrace),
             tag(TokenType::SemiColon),
         )),
-        |(ident, _, _, _, expr, _, _)| Item::TraitDeclaration(ident, expr),
+        |(ident, _, _, _, expr, _, end)| {
+            Parsed::new(
+                Item::TraitDeclaration(ident.data, expr),
+                ident.start_pos,
+                Some(end.end_pos),
+            )
+        },
     )(stream)
 }
 
@@ -69,10 +83,10 @@ fn parse_trait_item<'a>(stream: TokenSlice<'a>) -> IResult<TokenSlice<'a>, Trait
         tuple((extract_identifier, many0(extract_identifier))),
         |(ident, args)| {
             if args.is_empty() {
-                TraitItem::Property { name: ident }
+                TraitItem::Property { name: ident.data }
             } else {
                 TraitItem::Function {
-                    name: ident,
+                    name: ident.data,
                     args: args.len(),
                 }
             }

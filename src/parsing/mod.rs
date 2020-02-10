@@ -5,7 +5,7 @@ use nom::multi::many0;
 use nom::AsBytes;
 use nom_locate;
 
-type ParsedModule = Vec<parser::item::Item>;
+type ParsedModule = Vec<parser::Parsed<parser::item::Item>>;
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
 pub struct Position {

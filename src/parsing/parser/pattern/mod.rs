@@ -4,6 +4,8 @@ use nom::multi::{fold_many0, many0, separated_list};
 use nom::sequence::{pair, preceded, tuple};
 use nom::IResult;
 
+use serde::Serialize;
+
 use super::{extract_identifier, tag, test, Parsed, TokenSlice};
 use crate::parsing::lexer::TokenType;
 use crate::parsing::parser::expression::parse_object_lookup_expression;
@@ -12,7 +14,7 @@ use crate::parsing::Position;
 
 pub type ParsedPattern<'a> = IResult<TokenSlice<'a>, Parsed<Pattern>>;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub enum Pattern {
     Number(f32),
     StringLiteral(String),
@@ -47,7 +49,7 @@ impl Pattern {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub enum PropertyPattern {
     Existance(String),
     Test(Parsed<String>, Box<Parsed<Pattern>>),

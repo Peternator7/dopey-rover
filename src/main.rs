@@ -1,4 +1,5 @@
 use dopey_rover::parsing;
+use serde_json::to_string;
 
 fn main() {
     let program = r#"
@@ -14,7 +15,7 @@ DoubleYIfXIsPositive x y = {
 "#;
 
     println!(
-        "{:?}",
-        parsing::parse_module(program).unwrap() //parser::pattern::parse_top_level_pattern(&*toks)
+        "{}",
+        to_string(&parsing::parse_module(program).unwrap()).unwrap() //parser::pattern::parse_top_level_pattern(&*toks)
     );
 }

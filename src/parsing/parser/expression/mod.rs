@@ -8,6 +8,8 @@ use nom::multi::fold_many0;
 use nom::sequence::{pair, preceded, tuple};
 use nom::IResult;
 
+use serde::Serialize;
+
 use super::{
     extract_identifier,
     statement::{Assignment, Statement},
@@ -23,7 +25,7 @@ use self::operators::*;
 
 pub type ParsedExpression<'a> = IResult<TokenSlice<'a>, Parsed<Expression>>;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub enum Expression {
     Number(f32),
     StringLiteral(String),
@@ -48,7 +50,7 @@ pub enum Expression {
     IfLetExpression,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct BinaryExpression {
     pub op: BinaryOperator,
     pub lhs: Parsed<Expression>,

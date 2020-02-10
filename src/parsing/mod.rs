@@ -5,9 +5,11 @@ use nom::multi::many0;
 use nom::AsBytes;
 use nom_locate;
 
+use serde::Serialize;
+
 type ParsedModule = Vec<parser::Parsed<parser::item::Item>>;
 
-#[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
+#[derive(Clone, Copy, Eq, PartialEq, Hash, Debug, Serialize)]
 pub struct Position {
     pub line: u32,
     pub column: usize,

@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 serde = { version="1", features=["derive"] }
+serde_json = "*"
 nom = "*"
 nom_locate = "*"
 rand = "*"

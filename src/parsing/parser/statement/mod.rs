@@ -8,17 +8,20 @@ use super::{expression::Expression, tag, Parsed, TokenSlice};
 use crate::parsing::lexer::TokenType;
 use crate::parsing::parser::expression::parse_top_level_expression;
 
+use serde::Serialize;
+
 pub type ParsedStatement<'a> = IResult<TokenSlice<'a>, Parsed<Statement>>;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct Assignment {
     pub lhs: Parsed<Pattern>,
     pub rhs: Parsed<Expression>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct TryStatement(Expression);
 
+#[derive(Clone, Debug, Serialize)]
 pub enum ImportStatement {
     ModuleLevel {
         path_segments: Vec<String>,
@@ -29,7 +32,7 @@ pub enum ImportStatement {
     },
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub enum Statement {
     Assignment(Assignment),
     TryStatement(TryStatement),

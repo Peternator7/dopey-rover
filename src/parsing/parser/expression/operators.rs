@@ -1,4 +1,6 @@
-#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
+use serde::Serialize;
+
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Serialize)]
 pub enum BinaryOperator {
     Add,
     Sub,

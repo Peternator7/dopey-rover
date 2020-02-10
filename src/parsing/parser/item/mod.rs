@@ -4,6 +4,8 @@ use nom::multi::{many0, separated_nonempty_list};
 use nom::sequence::{terminated, tuple};
 use nom::IResult;
 
+use serde::Serialize;
+
 use super::expression::parse_top_level_expression;
 use super::pattern::parse_assignable_pattern;
 use super::statement::{parse_assignment, parse_try_statement};
@@ -13,7 +15,7 @@ use crate::parsing::lexer::TokenType;
 
 pub type ParsedItem<'a> = IResult<TokenSlice<'a>, Parsed<Item>>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum Item {
     Assignment(Assignment),
     TryStatement(TryStatement),
@@ -21,7 +23,7 @@ pub enum Item {
     ModuleImport,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize)]
 pub enum TraitItem {
     Property { name: String },
     Function { name: String, args: usize },

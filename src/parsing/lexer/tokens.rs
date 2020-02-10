@@ -8,7 +8,7 @@ pub struct Token<'a> {
 }
 
 impl<'a> Token<'a> {
-    pub fn new<'b>(start_pos: Position, end_pos: Position, ty: TokenType<'b>) -> Token<'b> {
+    pub fn new(start_pos: Position, end_pos: Position, ty: TokenType) -> Token {
         Token {
             start_pos,
             end_pos,

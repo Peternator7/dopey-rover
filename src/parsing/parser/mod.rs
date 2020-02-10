@@ -8,12 +8,14 @@ use nom::error::ErrorKind;
 use nom::Err;
 use nom::IResult;
 
+use serde::Serialize;
+
 use super::lexer::{Token, TokenType};
 use super::Position;
 
 type TokenSlice<'a> = &'a [Token<'a>];
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Parsed<T> {
     pub start_pos: Position,
     pub end_pos: Option<Position>,

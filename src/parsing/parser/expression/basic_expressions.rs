@@ -10,10 +10,9 @@ use super::{
 use crate::parsing::{
     lexer::TokenType,
     parser::{
-        extract_identifier, pattern::parse_object_creation_property_pattern, statement::Assignment,
-        tag, test, Parsed, TokenSlice,
+        extract_identifier, pattern::parse_object_creation_property_pattern, tag, test, TokenSlice,
     },
-    Position,
+    Assignment, Parsed, Position,
 };
 
 pub fn parse_basic_expression(stream: TokenSlice) -> ParsedExpression {

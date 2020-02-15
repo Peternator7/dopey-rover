@@ -3,42 +3,14 @@ use nom::combinator::map;
 use nom::sequence::tuple;
 use nom::IResult;
 
-use super::pattern::{parse_assignable_pattern, Pattern};
-use super::{expression::Expression, tag, Parsed, TokenSlice};
-use crate::parsing::lexer::TokenType;
-use crate::parsing::parser::expression::parse_top_level_expression;
-
-use serde::Serialize;
+use super::pattern::parse_assignable_pattern;
+use super::{tag, TokenSlice};
+use crate::parsing::{
+    lexer::TokenType, parser::expression::parse_top_level_expression, Assignment, Expression,
+    Parsed, Pattern, Statement, TryStatement,
+};
 
 pub type ParsedStatement<'a> = IResult<TokenSlice<'a>, Parsed<Statement>>;
-
-#[derive(Clone, Debug, Serialize)]
-pub struct Assignment {
-    pub lhs: Parsed<Pattern>,
-    pub rhs: Parsed<Expression>,
-}
-
-#[derive(Clone, Debug, Serialize)]
-pub struct TryStatement(Expression);
-
-#[derive(Clone, Debug, Serialize)]
-pub enum ImportStatement {
-    ModuleLevel {
-        path_segments: Vec<String>,
-    },
-    ItemLevel {
-        path_segments: Vec<String>,
-        items: Vec<String>,
-    },
-}
-
-#[derive(Clone, Debug, Serialize)]
-pub enum Statement {
-    Assignment(Assignment),
-    TryStatement(TryStatement),
-    SetStatement(Parsed<Expression>, Parsed<Expression>),
-    ModuleImport,
-}
 
 pub fn parse_statement(stream: TokenSlice) -> ParsedStatement {
     alt((

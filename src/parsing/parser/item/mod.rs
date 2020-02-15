@@ -8,17 +8,15 @@ use serde::Serialize;
 
 use super::expression::parse_top_level_expression;
 use super::pattern::parse_assignable_pattern;
-use super::statement::{parse_assignment, parse_try_statement};
-use super::statement::{Assignment, TryStatement};
-use super::{extract_identifier, tag, Parsed, TokenSlice};
-use crate::parsing::lexer::TokenType;
+use super::statement::parse_assignment;
+use super::{extract_identifier, tag, TokenSlice};
+use crate::parsing::{lexer::TokenType, Assignment, Parsed};
 
 pub type ParsedItem<'a> = IResult<TokenSlice<'a>, Parsed<Item>>;
 
 #[derive(Debug, Clone, Serialize)]
 pub enum Item {
     Assignment(Assignment),
-    TryStatement(TryStatement),
     TraitDeclaration(String, Vec<TraitItem>),
     ModuleImport,
 }
@@ -45,9 +43,6 @@ pub fn parse_item(stream: TokenSlice) -> ParsedItem {
                 )
             },
         ),
-        map(parse_try_statement, |t| {
-            Parsed::new(Item::TryStatement(t.data), t.start_pos, t.end_pos)
-        }),
     ))(stream)
 }
 

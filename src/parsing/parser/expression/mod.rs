@@ -1,6 +1,5 @@
 pub mod basic_expressions;
 pub mod block;
-pub mod operators;
 
 use nom::branch::alt;
 use nom::combinator::{map, opt, value};
@@ -8,76 +7,15 @@ use nom::multi::fold_many0;
 use nom::sequence::{pair, preceded, tuple};
 use nom::IResult;
 
-use serde::Serialize;
+use crate::parsing::{Assignment, BinaryExpression, BinaryOperator, Expression, Parsed, Statement};
 
-use super::{
-    extract_identifier,
-    statement::{Assignment, Statement},
-    tag, TokenSlice,
-};
+use super::{extract_identifier, tag, TokenSlice};
 
 use crate::parsing::lexer::TokenType;
 
-pub use super::Parsed;
-
 use self::basic_expressions::parse_basic_expression;
-use self::operators::*;
 
 pub type ParsedExpression<'a> = IResult<TokenSlice<'a>, Parsed<Expression>>;
-
-#[derive(Clone, Debug, Serialize)]
-pub enum Expression {
-    Number(f32),
-    StringLiteral(String),
-    NewObject(Vec<Parsed<Assignment>>),
-    NilArrayExpression,
-    Variable(String),
-    BinaryExpression(Box<BinaryExpression>),
-    BooleanReturnExpression(
-        BinaryOperator,
-        Box<Parsed<Expression>>,
-        Parsed<Option<Box<Expression>>>,
-    ),
-    GetExpression(String, Box<Parsed<Expression>>),
-    ObjectLookupExpression(Box<Parsed<Expression>>, Parsed<String>),
-    IfElseExpression(
-        Box<Parsed<Expression>>,
-        Box<Parsed<Expression>>,
-        Box<Parsed<Expression>>,
-    ),
-    MatchExpression(Box<Parsed<Expression>>, Vec<()>),
-    BlockExpression(Vec<Parsed<Statement>>, Option<Box<Parsed<Expression>>>),
-    IfLetExpression,
-}
-
-#[derive(Clone, Debug, Serialize)]
-pub struct BinaryExpression {
-    pub op: BinaryOperator,
-    pub lhs: Parsed<Expression>,
-    pub rhs: Parsed<Expression>,
-}
-
-impl BinaryExpression {
-    pub fn new(
-        op: BinaryOperator,
-        lhs: Parsed<Expression>,
-        rhs: Parsed<Expression>,
-    ) -> BinaryExpression {
-        BinaryExpression { op, lhs, rhs }
-    }
-}
-
-impl Expression {
-    pub fn requires_trailing_semicolon(&self) -> bool {
-        match self {
-            Expression::IfElseExpression(_, _, _) => false,
-            Expression::IfLetExpression => false,
-            Expression::MatchExpression(_, _) => false,
-            Expression::BlockExpression(_, _) => false,
-            _ => true,
-        }
-    }
-}
 
 pub fn parse_top_level_expression(stream: TokenSlice) -> ParsedExpression {
     alt((parse_boolean_expression, block::parse_block_expression))(stream)

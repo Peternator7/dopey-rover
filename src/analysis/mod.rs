@@ -1,1 +1,1 @@
-use crate::parsing::ParsedModule;
+use crate::types::ParsedModule;

@@ -48,23 +48,6 @@ pub enum Expression {
     IfLetExpression,
 }
 
-#[derive(Clone, Debug, Serialize)]
-pub struct BinaryExpression {
-    pub op: BinaryOperator,
-    pub lhs: Parsed<Expression>,
-    pub rhs: Parsed<Expression>,
-}
-
-impl BinaryExpression {
-    pub fn new(
-        op: BinaryOperator,
-        lhs: Parsed<Expression>,
-        rhs: Parsed<Expression>,
-    ) -> BinaryExpression {
-        BinaryExpression { op, lhs, rhs }
-    }
-}
-
 impl Expression {
     pub fn requires_trailing_semicolon(&self) -> bool {
         match self {

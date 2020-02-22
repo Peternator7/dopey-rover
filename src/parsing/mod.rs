@@ -1,8 +1,7 @@
 pub mod lexer;
 pub mod parser;
-pub mod types;
 
-pub use types::*;
+use super::types::*;
 
 pub use std::collections::HashMap;
 
@@ -16,7 +15,7 @@ impl<T: AsBytes> std::convert::From<nom_locate::LocatedSpan<T>> for Position {
     }
 }
 
-pub fn parse_module(stream: &str) -> Result<ParsedModule, ()> {
+pub fn parse_module(name: &str, stream: &str) -> Result<ParsedModule, ()> {
     let stream = nom_locate::LocatedSpan::new(stream);
     if let Ok((_, toks)) = lexer::tokenize(stream) {
         if let Ok((_, items)) = many0(parser::item::parse_item)(&*toks) {
@@ -24,6 +23,7 @@ pub fn parse_module(stream: &str) -> Result<ParsedModule, ()> {
             let mut functions = HashMap::new();
             let mut traits = HashMap::new();
             let mut imports = Vec::new();
+            let sub_modules = HashMap::new();
 
             for item in items {
                 let start_pos = item.start_pos;
@@ -71,10 +71,12 @@ pub fn parse_module(stream: &str) -> Result<ParsedModule, ()> {
             }
 
             Ok(ParsedModule {
+                name: name.to_string(),
                 objects,
                 functions,
                 traits,
                 imports,
+                sub_modules,
             })
         } else {
             Err(())

@@ -16,6 +16,6 @@ DoubleYIfXIsPositive x y = {
 
     println!(
         "{}",
-        to_string(&parsing::parse_module(program).unwrap()).unwrap() //parser::pattern::parse_top_level_pattern(&*toks)
+        to_string(&parsing::parse_module("program", program).unwrap()).unwrap() //parser::pattern::parse_top_level_pattern(&*toks)
     );
 }

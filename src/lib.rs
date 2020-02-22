@@ -3,6 +3,7 @@
 pub mod analysis;
 pub mod codegen;
 pub mod parsing;
+pub mod types;
 
 use std::collections::HashMap;
 

@@ -7,13 +7,9 @@ use nom::multi::fold_many0;
 use nom::sequence::{pair, preceded, tuple};
 use nom::IResult;
 
-use crate::parsing::{BinaryOperator, Expression, Parsed};
-
-use super::{extract_identifier, tag, TokenSlice};
-
-use crate::parsing::lexer::TokenType;
-
 use self::basic_expressions::parse_basic_expression;
+use super::{extract_identifier, tag, TokenSlice};
+use crate::parsing::{lexer::TokenType, BinaryOperator, Expression, Parsed};
 
 pub type ParsedExpression<'a> = IResult<TokenSlice<'a>, Parsed<Expression>>;
 

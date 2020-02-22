@@ -3,8 +3,8 @@ use super::{Expression, Parsed, Pattern};
 use serde::Serialize;
 
 #[derive(Clone, Debug, Serialize)]
-pub struct Assignment {
-    pub lhs: Parsed<Pattern>,
+pub struct Assignment<T> {
+    pub lhs: Parsed<T>,
     pub rhs: Parsed<Expression>,
 }
 
@@ -25,7 +25,7 @@ pub enum ImportStatement {
 #[derive(Clone, Debug, Serialize)]
 #[serde(tag = "type")]
 pub enum Statement {
-    Assignment(Assignment),
+    Assignment(Assignment<Pattern>),
     TryStatement(TryStatement),
     SetStatement {
         trait_object: Parsed<Expression>,

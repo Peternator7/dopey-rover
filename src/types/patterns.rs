@@ -3,11 +3,17 @@ use serde::Serialize;
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(tag = "type")]
+pub enum BasicPattern {
+    Identifier { value: String },
+    Function(FunctionPattern),
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(tag = "type")]
 pub enum Pattern {
     Number { value: f32 },
     StringLiteral { value: String },
-    Identifier { value: String },
-    Function(FunctionPattern),
+    Basic(BasicPattern),
     ObjectDestructuring(Vec<Parsed<PropertyPattern>>),
     ConsPattern(ConsPattern),
     NilArrayPattern,
@@ -17,8 +23,7 @@ pub enum Pattern {
 impl Pattern {
     pub fn is_assignable(&self) -> bool {
         match self {
-            Pattern::Identifier { .. } => true,
-            Pattern::Function(_) => true,
+            Pattern::Basic(..) => true,
             Pattern::ObjectDestructuring(props) => !props.is_empty(),
             Pattern::ConsPattern(ConsPattern { head, tail }) => {
                 head.data.is_assignable() || tail.data.is_assignable()
@@ -33,8 +38,7 @@ impl Pattern {
 
     pub fn is_valid_object_property(&self) -> bool {
         match self {
-            Pattern::Identifier { .. } => true,
-            Pattern::Function(_) => true,
+            Pattern::Basic(_) => true,
             _ => false,
         }
     }

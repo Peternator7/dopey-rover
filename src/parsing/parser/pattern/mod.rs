@@ -5,19 +5,20 @@ use nom::sequence::{pair, preceded, tuple};
 use nom::IResult;
 
 use crate::parsing::{
-    lexer::TokenType, parser::expression::parse_object_lookup_expression, ConsPattern,
-    FunctionPattern, Pattern, Position, PropertyPattern, TestPattern,
+    lexer::TokenType, parser::expression::parse_object_lookup_expression, BasicPattern,
+    ConsPattern, FunctionPattern, Pattern, Position, PropertyPattern, TestPattern,
 };
 
 use super::{extract_identifier, tag, test, Parsed, TokenSlice};
 
 pub type ParsedPattern<'a> = IResult<TokenSlice<'a>, Parsed<Pattern>>;
+pub type ParsedBasicPattern<'a> = IResult<TokenSlice<'a>, Parsed<BasicPattern>>;
 
 pub fn parse_assignable_pattern(stream: TokenSlice) -> ParsedPattern {
     verify(parse_top_level_pattern, |p| p.data.is_assignable())(stream)
 }
 
-pub fn parse_object_creation_property_pattern(stream: TokenSlice) -> ParsedPattern {
+pub fn parse_object_creation_property_pattern(stream: TokenSlice) -> ParsedBasicPattern {
     verify(parse_top_level_pattern, |p| {
         p.data.is_valid_object_property()
     })(stream)
@@ -124,16 +125,16 @@ fn parse_ident_pattern(stream: TokenSlice) -> ParsedPattern {
                 let end_pos = args.last().expect("We just checked it's not empty").end_pos;
                 let args = args.into_iter().map(|p| p.data).collect();
                 Parsed::new(
-                    Pattern::Function(FunctionPattern {
+                    Pattern::Basic(BasicPattern::Function(FunctionPattern {
                         name: name.data,
                         args,
-                    }),
+                    })),
                     start_pos,
                     end_pos,
                 )
             } else {
                 Parsed::new(
-                    Pattern::Identifier { value: name.data },
+                    Pattern::Basic(BasicPattern::Identifier { value: name.data }),
                     start_pos,
                     name.end_pos,
                 )

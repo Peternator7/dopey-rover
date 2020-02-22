@@ -16,8 +16,8 @@ pub use statements::*;
 #[derive(Serialize, Clone, Debug, Default)]
 pub struct ParsedModule {
     pub name: String,
-    pub objects: HashMap<String, Parsed<Assignment>>,
-    pub functions: HashMap<String, Parsed<Assignment>>,
+    pub objects: HashMap<String, Parsed<Assignment<String>>>,
+    pub functions: HashMap<String, Parsed<Assignment<FunctionPattern>>>,
     pub traits: HashMap<String, Parsed<TraitDeclaration>>,
     pub imports: Vec<Parsed<ImportStatement>>,
     pub sub_modules: HashMap<String, ParsedModule>,

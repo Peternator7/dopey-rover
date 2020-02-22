@@ -30,7 +30,7 @@ pub fn parse_module(name: &str, stream: &str) -> Result<ParsedModule, ()> {
                 let end_pos = item.end_pos;
                 match item.data {
                     Item::Assignment(data) => match data.lhs.data {
-                        Pattern::Identifier { ref value } => {
+                        BasicPattern::Identifier { ref value } => {
                             objects.insert(
                                 value.clone(),
                                 Parsed {
@@ -40,7 +40,7 @@ pub fn parse_module(name: &str, stream: &str) -> Result<ParsedModule, ()> {
                                 },
                             );
                         }
-                        Pattern::Function(ref func) => {
+                        BasicPattern::Function(ref func) => {
                             functions.insert(
                                 func.name.clone(),
                                 Parsed {
@@ -50,7 +50,6 @@ pub fn parse_module(name: &str, stream: &str) -> Result<ParsedModule, ()> {
                                 },
                             );
                         }
-                        _ => unreachable!(),
                     },
                     Item::TraitDeclaration(data) => {
                         traits.insert(

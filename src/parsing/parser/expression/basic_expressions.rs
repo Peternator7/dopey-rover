@@ -10,7 +10,7 @@ use crate::parsing::{
     parser::{
         extract_identifier, pattern::parse_object_creation_property_pattern, tag, test, TokenSlice,
     },
-    Assignment, Parsed, Position,
+    Assignment, BasicPattern, Parsed, Position,
 };
 
 pub fn parse_basic_expression(stream: TokenSlice) -> ParsedExpression {
@@ -106,7 +106,9 @@ fn parse_new_object(stream: TokenSlice) -> ParsedExpression {
     )(stream)
 }
 
-fn parse_object_property_list(stream: TokenSlice) -> IResult<TokenSlice, Vec<Parsed<Assignment>>> {
+fn parse_object_property_list(
+    stream: TokenSlice,
+) -> IResult<TokenSlice, Vec<Parsed<Assignment<BasicPattern>>>> {
     map(
         tuple((
             separated_nonempty_list(tag(TokenType::Comma), parse_object_property),
@@ -117,7 +119,9 @@ fn parse_object_property_list(stream: TokenSlice) -> IResult<TokenSlice, Vec<Par
     .or_else(|_| Ok((stream, Vec::new())))
 }
 
-fn parse_object_property(stream: TokenSlice) -> IResult<TokenSlice, Parsed<Assignment>> {
+fn parse_object_property(
+    stream: TokenSlice,
+) -> IResult<TokenSlice, Parsed<Assignment<BasicPattern>>> {
     map(
         tuple((
             parse_object_creation_property_pattern,

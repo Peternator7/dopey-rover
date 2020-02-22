@@ -20,14 +20,61 @@ pub fn parse_module(stream: &str) -> Result<ParsedModule, ()> {
     let stream = nom_locate::LocatedSpan::new(stream);
     if let Ok((_, toks)) = lexer::tokenize(stream) {
         if let Ok((_, items)) = many0(parser::item::parse_item)(&*toks) {
-            let objects = HashMap::new();
-            let functions = HashMap::new();
-            let traits = HashMap::new();
+            let mut objects = HashMap::new();
+            let mut functions = HashMap::new();
+            let mut traits = HashMap::new();
+            let mut imports = Vec::new();
+
+            for item in items {
+                let start_pos = item.start_pos;
+                let end_pos = item.end_pos;
+                match item.data {
+                    Item::Assignment(data) => match data.lhs.data {
+                        Pattern::Identifier { ref value } => {
+                            objects.insert(
+                                value.clone(),
+                                Parsed {
+                                    data,
+                                    start_pos,
+                                    end_pos,
+                                },
+                            );
+                        }
+                        Pattern::Function(ref func) => {
+                            functions.insert(
+                                func.name.clone(),
+                                Parsed {
+                                    data,
+                                    start_pos,
+                                    end_pos,
+                                },
+                            );
+                        }
+                        _ => unreachable!(),
+                    },
+                    Item::TraitDeclaration(data) => {
+                        traits.insert(
+                            data.name.clone(),
+                            Parsed {
+                                data,
+                                start_pos,
+                                end_pos,
+                            },
+                        );
+                    }
+                    Item::ModuleImport(data) => imports.push(Parsed {
+                        data,
+                        start_pos,
+                        end_pos,
+                    }),
+                }
+            }
 
             Ok(ParsedModule {
                 objects,
                 functions,
                 traits,
+                imports,
             })
         } else {
             Err(())

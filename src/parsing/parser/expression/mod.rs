@@ -7,7 +7,7 @@ use nom::multi::fold_many0;
 use nom::sequence::{pair, preceded, tuple};
 use nom::IResult;
 
-use crate::parsing::{Assignment, BinaryExpression, BinaryOperator, Expression, Parsed, Statement};
+use crate::parsing::{BinaryOperator, Expression, Parsed};
 
 use super::{extract_identifier, tag, TokenSlice};
 
@@ -61,8 +61,10 @@ fn parse_boolean_expression(stream: TokenSlice) -> ParsedExpression {
                 remainder = rem;
                 let start_pos = output.start_pos;
                 let end_pos = rhs.end_pos;
+                let lhs = Box::new(output);
+                let rhs = Box::new(rhs);
                 output = Parsed::new(
-                    Expression::BinaryExpression(Box::new(BinaryExpression::new(op, output, rhs))),
+                    Expression::BinaryExpression { op, lhs, rhs },
                     start_pos,
                     end_pos,
                 )
@@ -72,7 +74,11 @@ fn parse_boolean_expression(stream: TokenSlice) -> ParsedExpression {
                 let start_pos = output.start_pos;
                 let end_pos = rhs.end_pos;
                 output = Parsed::new(
-                    Expression::BooleanReturnExpression(op, Box::new(output), rhs),
+                    Expression::BooleanReturnExpression {
+                        op,
+                        lhs: Box::new(output),
+                        rhs,
+                    },
                     start_pos,
                     end_pos,
                 );
@@ -95,12 +101,14 @@ fn parse_test_expression(stream: TokenSlice) -> ParsedExpression {
             if let Some(rhs) = rhs {
                 let start_pos = lhs.start_pos;
                 let end_pos = rhs.end_pos;
+                let lhs = Box::new(lhs);
+                let rhs = Box::new(rhs);
                 Parsed::new(
-                    Expression::BinaryExpression(Box::new(BinaryExpression::new(
-                        BinaryOperator::Test,
+                    Expression::BinaryExpression {
+                        op: BinaryOperator::Test,
                         lhs,
                         rhs,
-                    ))),
+                    },
                     start_pos,
                     end_pos,
                 )
@@ -138,8 +146,10 @@ fn parse_comparison_expression(stream: TokenSlice) -> ParsedExpression {
             if let Some((op, rhs)) = rhs {
                 let start_pos = lhs.start_pos;
                 let end_pos = rhs.end_pos;
+                let lhs = Box::new(lhs);
+                let rhs = Box::new(rhs);
                 Parsed::new(
-                    Expression::BinaryExpression(Box::new(BinaryExpression::new(op, lhs, rhs))),
+                    Expression::BinaryExpression { op, lhs, rhs },
                     start_pos,
                     end_pos,
                 )
@@ -165,8 +175,10 @@ fn parse_addition_expression(stream: TokenSlice) -> ParsedExpression {
         |acc, (op, rhs)| {
             let start_pos = acc.start_pos;
             let end_pos = rhs.end_pos;
+            let lhs = Box::new(acc);
+            let rhs = Box::new(rhs);
             Parsed::new(
-                Expression::BinaryExpression(Box::new(BinaryExpression::new(op, acc, rhs))),
+                Expression::BinaryExpression { op, lhs, rhs },
                 start_pos,
                 end_pos,
             )
@@ -190,8 +202,10 @@ fn parse_multiplication_expression(stream: TokenSlice) -> ParsedExpression {
         |acc, (op, rhs)| {
             let start_pos = acc.start_pos;
             let end_pos = rhs.end_pos;
+            let lhs = Box::new(acc);
+            let rhs = Box::new(rhs);
             Parsed::new(
-                Expression::BinaryExpression(Box::new(BinaryExpression::new(op, acc, rhs))),
+                Expression::BinaryExpression { op, lhs, rhs },
                 start_pos,
                 end_pos,
             )
@@ -208,12 +222,14 @@ fn parse_call_expression(stream: TokenSlice) -> ParsedExpression {
     fold_many0(parse_call_lhs_expression, init, |acc, arg| {
         let start_pos = acc.start_pos;
         let end_pos = arg.end_pos;
+        let lhs = Box::new(acc);
+        let rhs = Box::new(arg);
         Parsed::new(
-            Expression::BinaryExpression(Box::new(BinaryExpression {
+            Expression::BinaryExpression {
                 op: BinaryOperator::Call,
-                lhs: acc,
-                rhs: arg,
-            })),
+                lhs,
+                rhs,
+            },
             start_pos,
             end_pos,
         )
@@ -232,12 +248,14 @@ fn parse_head_expression(stream: TokenSlice) -> ParsedExpression {
         |acc, (_, rhs)| {
             let start_pos = acc.start_pos;
             let end_pos = rhs.end_pos;
+            let lhs = Box::new(acc);
+            let rhs = Box::new(rhs);
             Parsed::new(
-                Expression::BinaryExpression(Box::new(BinaryExpression {
+                Expression::BinaryExpression {
                     op: BinaryOperator::Cons,
-                    lhs: acc,
+                    lhs,
                     rhs,
-                })),
+                },
                 start_pos,
                 end_pos,
             )
@@ -254,7 +272,10 @@ pub fn parse_object_lookup_expression(stream: TokenSlice) -> ParsedExpression {
             let start_pos = acc.start_pos;
             let end_pos = property.end_pos;
             Parsed::new(
-                Expression::ObjectLookupExpression(Box::new(acc), property),
+                Expression::ObjectLookupExpression {
+                    object: Box::new(acc),
+                    property: property.data,
+                },
                 start_pos,
                 end_pos,
             )

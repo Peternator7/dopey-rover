@@ -1,29 +1,50 @@
-
-use super::{Parsed, Assignment, Statement};
+use super::{Assignment, Parsed, Statement};
 use serde::Serialize;
 
 #[derive(Clone, Debug, Serialize)]
+#[serde(tag = "type")]
 pub enum Expression {
-    Number(f32),
-    StringLiteral(String),
-    NewObject(Vec<Parsed<Assignment>>),
+    Number {
+        value: f32,
+    },
+    StringLiteral {
+        value: String,
+    },
+    NewObject {
+        fields: Vec<Parsed<Assignment>>,
+    },
     NilArrayExpression,
-    Variable(String),
-    BinaryExpression(Box<BinaryExpression>),
-    BooleanReturnExpression(
-        BinaryOperator,
-        Box<Parsed<Expression>>,
-        Parsed<Option<Box<Expression>>>,
-    ),
-    GetExpression(String, Box<Parsed<Expression>>),
-    ObjectLookupExpression(Box<Parsed<Expression>>, Parsed<String>),
-    IfElseExpression(
-        Box<Parsed<Expression>>,
-        Box<Parsed<Expression>>,
-        Box<Parsed<Expression>>,
-    ),
-    MatchExpression(Box<Parsed<Expression>>, Vec<()>),
-    BlockExpression(Vec<Parsed<Statement>>, Option<Box<Parsed<Expression>>>),
+    Variable {
+        value: String,
+    },
+    BinaryExpression {
+        op: BinaryOperator,
+        lhs: Box<Parsed<Expression>>,
+        rhs: Box<Parsed<Expression>>,
+    },
+    BooleanReturnExpression {
+        op: BinaryOperator,
+        lhs: Box<Parsed<Expression>>,
+        rhs: Parsed<Option<Box<Expression>>>,
+    },
+    GetExpression {
+        trait_name: String,
+        object: Box<Parsed<Expression>>,
+    },
+    ObjectLookupExpression {
+        object: Box<Parsed<Expression>>,
+        property: String,
+    },
+    // IfElseExpression(
+    //     Box<Parsed<Expression>>,
+    //     Box<Parsed<Expression>>,
+    //     Box<Parsed<Expression>>,
+    // ),
+    // MatchExpression(Box<Parsed<Expression>>, Vec<()>),
+    BlockExpression {
+        stmts: Vec<Parsed<Statement>>,
+        return_value: Option<Box<Parsed<Expression>>>,
+    },
     IfLetExpression,
 }
 
@@ -47,10 +68,10 @@ impl BinaryExpression {
 impl Expression {
     pub fn requires_trailing_semicolon(&self) -> bool {
         match self {
-            Expression::IfElseExpression(_, _, _) => false,
+            // Expression::IfElseExpression(_, _, _) => false,
             Expression::IfLetExpression => false,
-            Expression::MatchExpression(_, _) => false,
-            Expression::BlockExpression(_, _) => false,
+            // Expression::MatchExpression(_, _) => false,
+            Expression::BlockExpression { .. } => false,
             _ => true,
         }
     }

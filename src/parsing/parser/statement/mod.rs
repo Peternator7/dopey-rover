@@ -78,7 +78,10 @@ pub fn parse_set_statement(stream: TokenSlice) -> ParsedStatement {
         )),
         |(start, _, lhs, _, rhs, _, end)| {
             Parsed::new(
-                Statement::SetStatement(lhs, rhs),
+                Statement::SetStatement {
+                    trait_object: lhs,
+                    target: rhs,
+                },
                 start.start_pos,
                 Some(end.end_pos),
             )

@@ -4,9 +4,7 @@ use nom::multi::separated_nonempty_list;
 use nom::sequence::{preceded, tuple};
 use nom::IResult;
 
-use super::{
-    parse_top_level_expression, BinaryExpression, BinaryOperator, Expression, ParsedExpression,
-};
+use super::{parse_top_level_expression, BinaryOperator, Expression, ParsedExpression};
 use crate::parsing::{
     lexer::TokenType,
     parser::{
@@ -28,13 +26,17 @@ pub fn parse_basic_expression(stream: TokenSlice) -> ParsedExpression {
 }
 
 fn parse_ident_expression(stream: TokenSlice) -> ParsedExpression {
-    map(extract_identifier, |ident| ident.map(Expression::Variable))(stream)
+    map(extract_identifier, |ident| {
+        ident.map(|value| Expression::Variable { value })
+    })(stream)
 }
 
 fn parse_string_literal(stream: TokenSlice) -> ParsedExpression {
     map(test(TokenType::is_string_literal), |tok| match tok.ty {
         TokenType::StringLiteral(s) => Parsed::new(
-            Expression::StringLiteral(s.to_string()),
+            Expression::StringLiteral {
+                value: s.to_string(),
+            },
             tok.start_pos,
             Some(tok.end_pos),
         ),
@@ -44,9 +46,11 @@ fn parse_string_literal(stream: TokenSlice) -> ParsedExpression {
 
 fn parse_number_literal(stream: TokenSlice) -> ParsedExpression {
     map(test(TokenType::is_number), |tok| match tok.ty {
-        TokenType::Number(f) => {
-            Parsed::new(Expression::Number(f), tok.start_pos, Some(tok.end_pos))
-        }
+        TokenType::Number(f) => Parsed::new(
+            Expression::Number { value: f },
+            tok.start_pos,
+            Some(tok.end_pos),
+        ),
         _ => unreachable!(),
     })(stream)
 }
@@ -63,7 +67,10 @@ fn parse_get_expression(stream: TokenSlice) -> ParsedExpression {
         )),
         |(start, _, ident, _, expr, end)| {
             Parsed::new(
-                Expression::GetExpression(ident.data, Box::new(expr)),
+                Expression::GetExpression {
+                    trait_name: ident.data,
+                    object: Box::new(expr),
+                },
                 start.start_pos,
                 Some(end.end_pos),
             )
@@ -89,9 +96,9 @@ fn parse_new_object(stream: TokenSlice) -> ParsedExpression {
             parse_object_property_list,
             tag(TokenType::CloseBrace),
         )),
-        |(start, expr, end)| {
+        |(start, fields, end)| {
             Parsed::new(
-                Expression::NewObject(expr),
+                Expression::NewObject { fields },
                 start.start_pos,
                 Some(end.end_pos),
             )
@@ -150,11 +157,11 @@ fn parse_array_expression(stream: TokenSlice) -> ParsedExpression {
             Ok((
                 rem,
                 Parsed::new(
-                    Expression::BinaryExpression(Box::new(BinaryExpression::new(
-                        BinaryOperator::Cons,
-                        head,
-                        tail,
-                    ))),
+                    Expression::BinaryExpression {
+                        op: BinaryOperator::Cons,
+                        lhs: Box::new(head),
+                        rhs: Box::new(tail),
+                    },
                     start_pos,
                     end_pos,
                 ),
@@ -165,11 +172,15 @@ fn parse_array_expression(stream: TokenSlice) -> ParsedExpression {
             Ok((
                 rem,
                 Parsed::new(
-                    Expression::BinaryExpression(Box::new(BinaryExpression::new(
-                        BinaryOperator::Cons,
-                        head,
-                        Parsed::new(Expression::NilArrayExpression, Position::new(0, 0), None),
-                    ))),
+                    Expression::BinaryExpression {
+                        op: BinaryOperator::Cons,
+                        lhs: Box::new(head),
+                        rhs: Box::new(Parsed::new(
+                            Expression::NilArrayExpression,
+                            Position::new(0, 0),
+                            None,
+                        )),
+                    },
                     start_pos,
                     end_pos,
                 ),

@@ -5,8 +5,8 @@ use nom::sequence::{pair, preceded, tuple};
 use nom::IResult;
 
 use crate::parsing::{
-    lexer::TokenType, parser::expression::parse_object_lookup_expression, Pattern, Position,
-    PropertyPattern,
+    lexer::TokenType, parser::expression::parse_object_lookup_expression, ConsPattern,
+    FunctionPattern, Pattern, Position, PropertyPattern, TestPattern,
 };
 
 use super::{extract_identifier, tag, test, Parsed, TokenSlice};
@@ -36,7 +36,10 @@ pub fn parse_head_pattern(stream: TokenSlice) -> ParsedPattern {
             let start_pos = acc.start_pos;
             let end_pos = rhs.end_pos;
             Parsed::new(
-                Pattern::ConsPattern(Box::new(acc), Box::new(rhs)),
+                Pattern::ConsPattern(ConsPattern {
+                    head: Box::new(acc),
+                    tail: Box::new(rhs),
+                }),
                 start_pos,
                 end_pos,
             )
@@ -62,7 +65,9 @@ pub fn parse_string_literal_pattern(stream: TokenSlice) -> ParsedPattern {
     map(test(TokenType::is_string_literal), |tok| {
         if let TokenType::StringLiteral(s) = tok.ty {
             Parsed::new(
-                Pattern::StringLiteral(s.to_string()),
+                Pattern::StringLiteral {
+                    value: s.to_string(),
+                },
                 tok.start_pos,
                 Some(tok.end_pos),
             )
@@ -75,7 +80,11 @@ pub fn parse_string_literal_pattern(stream: TokenSlice) -> ParsedPattern {
 fn parse_number_literal_pattern(stream: TokenSlice) -> ParsedPattern {
     map(test(TokenType::is_number), |tok| {
         if let TokenType::Number(f) = tok.ty {
-            Parsed::new(Pattern::Number(f), tok.start_pos, Some(tok.end_pos))
+            Parsed::new(
+                Pattern::Number { value: f },
+                tok.start_pos,
+                Some(tok.end_pos),
+            )
         } else {
             unreachable!()
         }
@@ -89,13 +98,16 @@ fn parse_test_pattern(stream: TokenSlice) -> ParsedPattern {
             parse_object_lookup_expression,
             opt(parse_basic_pattern),
         )),
-        |(start, parent, unpacked)| {
+        |(start, ty_test, unpacked)| {
             let end_pos = unpacked
                 .as_ref()
                 .map(|patt| patt.end_pos)
-                .unwrap_or(parent.end_pos);
+                .unwrap_or(ty_test.end_pos);
             Parsed::new(
-                Pattern::TestPattern(parent, unpacked.map(Box::new)),
+                Pattern::TestPattern(TestPattern {
+                    ty_test,
+                    field_pats: unpacked.map(Box::new),
+                }),
                 start.start_pos,
                 end_pos,
             )
@@ -106,13 +118,25 @@ fn parse_test_pattern(stream: TokenSlice) -> ParsedPattern {
 fn parse_ident_pattern(stream: TokenSlice) -> ParsedPattern {
     map(
         pair(extract_identifier, many0(extract_identifier)),
-        |(ident, args)| {
-            let start_pos = ident.start_pos;
+        |(name, args)| {
+            let start_pos = name.start_pos;
             if !args.is_empty() {
                 let end_pos = args.last().expect("We just checked it's not empty").end_pos;
-                Parsed::new(Pattern::Function(ident, args), start_pos, end_pos)
+                let args = args.into_iter().map(|p| p.data).collect();
+                Parsed::new(
+                    Pattern::Function(FunctionPattern {
+                        name: name.data,
+                        args,
+                    }),
+                    start_pos,
+                    end_pos,
+                )
             } else {
-                Parsed::new(Pattern::Identifier(ident.data), start_pos, ident.end_pos)
+                Parsed::new(
+                    Pattern::Identifier { value: name.data },
+                    start_pos,
+                    name.end_pos,
+                )
             }
         },
     )(stream)
@@ -131,7 +155,7 @@ fn parse_object_property_pattern(
                 let start_pos = ident.start_pos;
                 let end_pos = patt.end_pos;
                 Parsed::new(
-                    PropertyPattern::Test(ident, Box::new(patt)),
+                    PropertyPattern::Test(ident.data, Box::new(patt)),
                     start_pos,
                     end_pos,
                 )
@@ -164,11 +188,9 @@ fn parse_object_pattern(stream: TokenSlice) -> ParsedPattern {
 
 fn parse_array_pattern(stream: TokenSlice) -> ParsedPattern {
     fn parse_array_pattern_inner(stream: TokenSlice) -> ParsedPattern {
-        use Pattern::*;
-
         let res = parse_top_level_pattern(stream);
         if res.is_err() {
-            let nil = Parsed::new(NilArrayPattern, Position::new(0, 0), None);
+            let nil = Parsed::new(Pattern::NilArrayPattern, Position::new(0, 0), None);
             return Ok((stream, nil));
         }
 
@@ -179,13 +201,27 @@ fn parse_array_pattern(stream: TokenSlice) -> ParsedPattern {
         if let Ok((rem, tail)) = res {
             let start_pos = head.start_pos;
             let end_pos = tail.end_pos;
-            let output = Parsed::new(ConsPattern(head, Box::new(tail)), start_pos, end_pos);
+            let output = Parsed::new(
+                Pattern::ConsPattern(ConsPattern {
+                    head,
+                    tail: Box::new(tail),
+                }),
+                start_pos,
+                end_pos,
+            );
             Ok((rem, output))
         } else {
             let start_pos = head.start_pos;
             let end_pos = head.end_pos;
-            let nil = Parsed::new(NilArrayPattern, Position::new(0, 0), None);
-            let output = Parsed::new(ConsPattern(head, Box::new(nil)), start_pos, end_pos);
+            let nil = Parsed::new(Pattern::NilArrayPattern, Position::new(0, 0), None);
+            let output = Parsed::new(
+                Pattern::ConsPattern(ConsPattern {
+                    head,
+                    tail: Box::new(nil),
+                }),
+                start_pos,
+                end_pos,
+            );
             Ok((rem, output))
         }
     }

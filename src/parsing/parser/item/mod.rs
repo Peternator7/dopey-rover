@@ -4,28 +4,13 @@ use nom::multi::{many0, separated_nonempty_list};
 use nom::sequence::{terminated, tuple};
 use nom::IResult;
 
-use serde::Serialize;
-
 use super::expression::parse_top_level_expression;
 use super::pattern::parse_assignable_pattern;
 use super::statement::parse_assignment;
 use super::{extract_identifier, tag, TokenSlice};
-use crate::parsing::{lexer::TokenType, Assignment, Parsed};
+use crate::parsing::{lexer::TokenType, Item, Parsed, TraitDeclaration, TraitItem};
 
 pub type ParsedItem<'a> = IResult<TokenSlice<'a>, Parsed<Item>>;
-
-#[derive(Debug, Clone, Serialize)]
-pub enum Item {
-    Assignment(Assignment),
-    TraitDeclaration(String, Vec<TraitItem>),
-    ModuleImport,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize)]
-pub enum TraitItem {
-    Property { name: String },
-    Function { name: String, args: usize },
-}
 
 pub fn parse_item(stream: TokenSlice) -> ParsedItem {
     alt((
@@ -59,7 +44,10 @@ fn parse_trait_declaration(stream: TokenSlice) -> ParsedItem {
         )),
         |(ident, _, _, _, expr, _, end)| {
             Parsed::new(
-                Item::TraitDeclaration(ident.data, expr),
+                Item::TraitDeclaration(TraitDeclaration {
+                    name: ident.data,
+                    items: expr,
+                }),
                 ident.start_pos,
                 Some(end.end_pos),
             )

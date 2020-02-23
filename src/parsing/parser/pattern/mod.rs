@@ -5,23 +5,21 @@ use nom::sequence::{pair, preceded, tuple};
 use nom::IResult;
 
 use crate::parsing::{
-    lexer::TokenType, parser::expression::parse_object_lookup_expression, BasicPattern,
-    ConsPattern, FunctionPattern, Pattern, Position, PropertyPattern, TestPattern,
+    lexer::TokenType, parser::expression::parse_object_lookup_expression, ConsPattern,
+    FunctionPattern, ItemPattern, Pattern, Position, PropertyPattern, TestPattern,
 };
 
 use super::{extract_identifier, tag, test, Parsed, TokenSlice};
 
 pub type ParsedPattern<'a> = IResult<TokenSlice<'a>, Parsed<Pattern>>;
-pub type ParsedBasicPattern<'a> = IResult<TokenSlice<'a>, Parsed<BasicPattern>>;
+pub type ParsedItemPattern<'a> = IResult<TokenSlice<'a>, Parsed<ItemPattern>>;
 
 pub fn parse_assignable_pattern(stream: TokenSlice) -> ParsedPattern {
     verify(parse_top_level_pattern, |p| p.data.is_assignable())(stream)
 }
 
-pub fn parse_object_creation_property_pattern(stream: TokenSlice) -> ParsedBasicPattern {
-    verify(parse_top_level_pattern, |p| {
-        p.data.is_valid_object_property()
-    })(stream)
+pub fn parse_item_pattern(stream: TokenSlice) -> ParsedItemPattern {
+    parse_ident_pattern(stream)
 }
 
 pub fn parse_top_level_pattern(stream: TokenSlice) -> ParsedPattern {
@@ -53,7 +51,9 @@ pub fn parse_basic_pattern(stream: TokenSlice) -> ParsedPattern {
     // False || return True || return True
     // is nonsensical, but we can figure that out later. It's dead code
     alt((
-        parse_ident_pattern,
+        map(parse_ident_pattern, |parsed| {
+            Parsed::new(Pattern::Item(parsed.data), parsed.start_pos, parsed.end_pos)
+        }),
         parse_object_pattern,
         parse_test_pattern,
         parse_string_literal_pattern,
@@ -116,7 +116,7 @@ fn parse_test_pattern(stream: TokenSlice) -> ParsedPattern {
     )(stream)
 }
 
-fn parse_ident_pattern(stream: TokenSlice) -> ParsedPattern {
+fn parse_ident_pattern(stream: TokenSlice) -> ParsedItemPattern {
     map(
         pair(extract_identifier, many0(extract_identifier)),
         |(name, args)| {
@@ -125,16 +125,16 @@ fn parse_ident_pattern(stream: TokenSlice) -> ParsedPattern {
                 let end_pos = args.last().expect("We just checked it's not empty").end_pos;
                 let args = args.into_iter().map(|p| p.data).collect();
                 Parsed::new(
-                    Pattern::Basic(BasicPattern::Function(FunctionPattern {
+                    ItemPattern::Function(FunctionPattern {
                         name: name.data,
                         args,
-                    })),
+                    }),
                     start_pos,
                     end_pos,
                 )
             } else {
                 Parsed::new(
-                    Pattern::Basic(BasicPattern::Identifier { value: name.data }),
+                    ItemPattern::Identifier { value: name.data },
                     start_pos,
                     name.end_pos,
                 )

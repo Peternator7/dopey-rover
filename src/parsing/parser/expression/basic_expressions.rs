@@ -7,10 +7,8 @@ use nom::IResult;
 use super::{parse_top_level_expression, BinaryOperator, Expression, ParsedExpression};
 use crate::parsing::{
     lexer::TokenType,
-    parser::{
-        extract_identifier, pattern::parse_object_creation_property_pattern, tag, test, TokenSlice,
-    },
-    Assignment, BasicPattern, Parsed, Position,
+    parser::{extract_identifier, pattern::parse_item_pattern, tag, test, TokenSlice},
+    Assignment, ItemPattern, Parsed, Position,
 };
 
 pub fn parse_basic_expression(stream: TokenSlice) -> ParsedExpression {
@@ -108,7 +106,7 @@ fn parse_new_object(stream: TokenSlice) -> ParsedExpression {
 
 fn parse_object_property_list(
     stream: TokenSlice,
-) -> IResult<TokenSlice, Vec<Parsed<Assignment<BasicPattern>>>> {
+) -> IResult<TokenSlice, Vec<Parsed<Assignment<ItemPattern>>>> {
     map(
         tuple((
             separated_nonempty_list(tag(TokenType::Comma), parse_object_property),
@@ -121,10 +119,10 @@ fn parse_object_property_list(
 
 fn parse_object_property(
     stream: TokenSlice,
-) -> IResult<TokenSlice, Parsed<Assignment<BasicPattern>>> {
+) -> IResult<TokenSlice, Parsed<Assignment<ItemPattern>>> {
     map(
         tuple((
-            parse_object_creation_property_pattern,
+            parse_item_pattern,
             tag(TokenType::Equals),
             parse_top_level_expression,
         )),

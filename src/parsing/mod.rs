@@ -29,28 +29,26 @@ pub fn parse_module(name: &str, stream: &str) -> Result<ParsedModule, ()> {
                 let start_pos = item.start_pos;
                 let end_pos = item.end_pos;
                 match item.data {
-                    Item::Assignment(data) => match data.lhs.data {
-                        BasicPattern::Identifier { ref value } => {
-                            objects.insert(
-                                value.clone(),
-                                Parsed {
-                                    data,
-                                    start_pos,
-                                    end_pos,
-                                },
-                            );
-                        }
-                        BasicPattern::Function(ref func) => {
-                            functions.insert(
-                                func.name.clone(),
-                                Parsed {
-                                    data,
-                                    start_pos,
-                                    end_pos,
-                                },
-                            );
-                        }
-                    },
+                    Item::ObjectDeclaration(data) => {
+                        objects.insert(
+                            data.lhs.to_string(),
+                            Parsed {
+                                data,
+                                start_pos,
+                                end_pos,
+                            },
+                        );
+                    }
+                    Item::FunctionDeclaration(data) => {
+                        functions.insert(
+                            data.lhs.name.clone(),
+                            Parsed {
+                                data,
+                                start_pos,
+                                end_pos,
+                            },
+                        );
+                    }
                     Item::TraitDeclaration(data) => {
                         traits.insert(
                             data.name.clone(),

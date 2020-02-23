@@ -49,21 +49,38 @@ impl ParsedModule {
         })
     }
 
-    pub fn find_symbol<'a>(
+    pub fn find_object<'a>(
         &'a self,
         module_path: &'a str,
         symbol: &'a str,
-    ) -> Result<&Parsed<Assignment>, CompilationError> {
+    ) -> Result<&Parsed<Assignment<String>>, CompilationError> {
+        self.find_inner(module_path.split('.'), |module| module.objects.get(symbol))
+            .map_err(|err| match err {
+                ItemLookUpError::SymbolNotFound => CompilationError::SymbolNotFound {
+                    module: module_path.to_string(),
+                    symbol: symbol.to_string(),
+                },
+                ItemLookUpError::ModuleNotFound(sub_module) => {
+                    CompilationError::SubModuleNotFound {
+                        module: module_path.to_string(),
+                        sub_module: sub_module.to_string(),
+                    }
+                }
+            })
+    }
+
+    pub fn find_function<'a>(
+        &'a self,
+        module_path: &'a str,
+        function: &'a str,
+    ) -> Result<&Parsed<Assignment<FunctionPattern>>, CompilationError> {
         self.find_inner(module_path.split('.'), |module| {
-            module
-                .objects
-                .get(symbol)
-                .or_else(|| module.functions.get(symbol))
+            module.functions.get(function)
         })
         .map_err(|err| match err {
             ItemLookUpError::SymbolNotFound => CompilationError::SymbolNotFound {
                 module: module_path.to_string(),
-                symbol: symbol.to_string(),
+                symbol: function.to_string(),
             },
             ItemLookUpError::ModuleNotFound(sub_module) => CompilationError::SubModuleNotFound {
                 module: module_path.to_string(),

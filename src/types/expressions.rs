@@ -1,4 +1,4 @@
-use super::{Assignment, BasicPattern, Parsed, Statement};
+use super::{Assignment, ItemPattern, Parsed, Statement};
 use serde::Serialize;
 
 #[derive(Clone, Debug, Serialize)]
@@ -11,7 +11,7 @@ pub enum Expression {
         value: String,
     },
     NewObject {
-        fields: Vec<Parsed<Assignment<BasicPattern>>>,
+        fields: Vec<Parsed<Assignment<ItemPattern>>>,
     },
     NilArrayExpression,
     Variable {

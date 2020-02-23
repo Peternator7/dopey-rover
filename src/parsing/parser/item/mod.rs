@@ -5,10 +5,12 @@ use nom::sequence::{terminated, tuple};
 use nom::IResult;
 
 use super::expression::parse_top_level_expression;
-use super::pattern::parse_assignable_pattern;
+use super::pattern::parse_item_pattern;
 use super::statement::parse_assignment;
 use super::{extract_identifier, tag, TokenSlice};
-use crate::parsing::{lexer::TokenType, Item, Parsed, TraitDeclaration, TraitItem};
+use crate::parsing::{
+    lexer::TokenType, Assignment, Item, ItemPattern, Parsed, TraitDeclaration, TraitItem,
+};
 
 pub type ParsedItem<'a> = IResult<TokenSlice<'a>, Parsed<Item>>;
 
@@ -17,15 +19,30 @@ pub fn parse_item(stream: TokenSlice) -> ParsedItem {
         parse_trait_declaration,
         map(
             tuple((
-                parse_assignment(parse_assignable_pattern, parse_top_level_expression),
+                parse_assignment(parse_item_pattern, parse_top_level_expression),
                 tag(TokenType::SemiColon),
             )),
             |(stmt, end)| {
-                Parsed::new(
-                    Item::Assignment(stmt.data),
-                    stmt.start_pos,
-                    Some(end.end_pos),
-                )
+                let start_pos = stmt.start_pos;
+                let end_pos = Some(end.end_pos);
+                let rhs = stmt.data.rhs;
+                let lhs = stmt.data.lhs;
+                match lhs.data {
+                    ItemPattern::Function(data) => {
+                        let data = Assignment {
+                            lhs: Parsed::new(data, lhs.start_pos, lhs.end_pos),
+                            rhs,
+                        };
+                        Parsed::new(Item::FunctionDeclaration(data), start_pos, end_pos)
+                    }
+                    ItemPattern::Identifier { value } => {
+                        let data = Assignment {
+                            lhs: Parsed::new(value, lhs.start_pos, lhs.end_pos),
+                            rhs,
+                        };
+                        Parsed::new(Item::ObjectDeclaration(data), start_pos, end_pos)
+                    }
+                }
             },
         ),
     ))(stream)

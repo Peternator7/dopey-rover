@@ -7,7 +7,7 @@ use super::pattern::parse_assignable_pattern;
 use super::{tag, TokenSlice};
 use crate::parsing::{
     lexer::TokenType, parser::expression::parse_top_level_expression, Assignment, Expression,
-    Parsed, Pattern, Statement, TryStatement,
+    Parsed, Statement, TryStatement,
 };
 
 pub type ParsedStatement<'a> = IResult<TokenSlice<'a>, Parsed<Statement>>;
@@ -34,12 +34,12 @@ pub fn parse_statement(stream: TokenSlice) -> ParsedStatement {
     ))(stream)
 }
 
-pub fn parse_assignment<'a, P, F>(
+pub fn parse_assignment<'a, P, F, A>(
     pat_fn: P,
     expr_fn: F,
-) -> impl Fn(TokenSlice<'a>) -> IResult<TokenSlice<'a>, Parsed<Assignment>>
+) -> impl Fn(TokenSlice<'a>) -> IResult<TokenSlice<'a>, Parsed<Assignment<A>>>
 where
-    P: Fn(TokenSlice) -> IResult<TokenSlice, Parsed<Pattern>>,
+    P: Fn(TokenSlice) -> IResult<TokenSlice, Parsed<A>>,
     F: Fn(TokenSlice) -> IResult<TokenSlice, Parsed<Expression>>,
 {
     map(

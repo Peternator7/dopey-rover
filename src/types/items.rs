@@ -1,10 +1,11 @@
-use super::{Assignment, BasicPattern, ImportStatement};
+use super::{Assignment, FunctionPattern, ImportStatement};
 use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type")]
 pub enum Item {
-    Assignment(Assignment<BasicPattern>),
+    FunctionDeclaration(Assignment<FunctionPattern>),
+    ObjectDeclaration(Assignment<String>),
     TraitDeclaration(TraitDeclaration),
     ModuleImport(ImportStatement),
 }
